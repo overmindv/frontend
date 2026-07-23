@@ -6,6 +6,9 @@ export interface User {
   lastName: string;
   birthDate: string | null;
   phone: string | null;
+  roles: string[];
+  isAdmin: boolean;
+  isSuperuser: boolean;
   createdAt: string;
   updatedAt: string;
 }
