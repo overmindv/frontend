@@ -11,6 +11,29 @@ React/TypeScript web client for the Overmindv user flow. All data goes through t
 - global logout on `UNAUTHENTICATED` GraphQL responses;
 - Russian server-error messages and loading states;
 - responsive pure-CSS UI.
+- catalog browsing через Laserbeak для всех пользователей;
+- admin-only catalog CRUD: университеты, программы, курсы, темы, backlog, дерево и пререквизиты;
+- admin-only управление ролями пользователей.
+
+## Администрирование каталога
+
+После авторизации каталог доступен по `/admin/catalog/universities`. Обычные пользователи видят существующие элементы в read-only режиме. Кнопки создания, удаления, смены статуса и формы редактирования показываются только пользователям с ролью `admin` в JWT.
+
+Backlog-страницы:
+
+- `/admin/catalog/programs` — программы без обязательного университета.
+- `/admin/catalog/courses` — курсы без обязательной программы.
+- `/admin/catalog/topics` — темы без обязательного курса.
+
+Страницы создания:
+
+- `/admin/catalog/programs/new` — создать программу и опционально выбрать университет.
+- `/admin/catalog/courses/new` — создать курс, выбрать университет для фильтрации и опционально программу.
+- `/admin/catalog/topics/new` — создать тему, выбрать университет/программу для фильтрации и опционально курс.
+
+Администраторы управляют ролями на `/admin/users`: список пользователей можно фильтровать по username/email, роль admin переключается через Laserbeak → Arcee. Поле `logoFileId` вводится вручную до появления upload flow Mirage.
+
+Все пользовательские ошибки показываются нейтральным текстом без технической причины. Подробные коды остаются только в GraphQL `extensions.code` и серверных логах.
 
 ## Structure
 
@@ -71,7 +94,7 @@ For the complete platform:
 ```bash
 cd ../ratchet
 cp .env.example .env
-# Set POSTGRES_PASSWORD and JWT_SECRET.
+# Set POSTGRES_PASSWORD, IRONHIDE_POSTGRES_PASSWORD, JWT_SECRET and BOOTSTRAP_SUPERUSER_*.
 make up
 ```
 
@@ -84,8 +107,10 @@ Soundwave follows the current Laserbeak schema:
 ```graphql
 mutation Register($input: RegisterInput!) { register(input: $input) { token user { id } } }
 mutation Login($input: LoginInput!) { login(input: $input) { token user { id } } }
-query GetUser($id: ID!) { getUser(id: $id) { id email username firstName lastName birthDate phone } }
+query GetUser($id: ID!) { getUser(id: $id) { id email username firstName lastName birthDate phone roles isAdmin isSuperuser } }
 mutation UpdateUser($id: ID!, $input: UpdateUserInput!) { updateUser(id: $id, input: $input) { id username firstName lastName } }
+query AdminUsers($search: String) { users(search: $search) { id username email isAdmin isSuperuser } }
+mutation SetUserAdmin($id: ID!, $admin: Boolean!) { setUserAdmin(id: $id, admin: $admin) { id isAdmin } }
 ```
 
 The profile ID is stored with the JWT after login/registration because the gateway currently exposes `getUser(id:)`, not `me`.

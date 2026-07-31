@@ -17,6 +17,9 @@ const originalUser = {
   lastName: "Имя",
   birthDate: "2000-01-20",
   phone: "+79991234567",
+  roles: [],
+  isAdmin: false,
+  isSuperuser: false,
   createdAt: "2026-06-28T00:00:00Z",
   updatedAt: "2026-06-28T00:00:00Z",
 };

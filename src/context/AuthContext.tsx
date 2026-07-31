@@ -20,6 +20,7 @@ import type { AuthPayload } from "../api/types";
 interface AuthContextValue {
   token: string | null;
   userId: string | null;
+  isAdmin: boolean;
   isAuthenticated: boolean;
   signIn: (payload: AuthPayload) => void;
   logout: () => void;
@@ -63,6 +64,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     () => ({
       token,
       userId,
+      isAdmin: isAdminToken(token),
       isAuthenticated: Boolean(token && userId),
       signIn,
       logout,
@@ -71,6 +73,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+function isAdminToken(token: string | null) {
+  if (!token) {
+    return false;
+  }
+
+  try {
+    const [, payload] = token.split(".");
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+    const decoded = JSON.parse(window.atob(padded)) as { roles?: string[] };
+
+    return decoded.roles?.some((role) => role.toLowerCase() === "admin") ?? false;
+  } catch {
+    return false;
+  }
 }
 
 export function useAuth() {

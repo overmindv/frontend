@@ -9,6 +9,9 @@ export const USER_FIELDS = gql`
     lastName
     birthDate
     phone
+    roles
+    isAdmin
+    isSuperuser
     createdAt
     updatedAt
   }
