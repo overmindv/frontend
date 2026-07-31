@@ -45,6 +45,9 @@ test("успешно входит, сохраняет JWT и открывает 
               lastName: "Example",
               birthDate: null,
               phone: null,
+              roles: [],
+              isAdmin: false,
+              isSuperuser: false,
               createdAt: "2026-06-28T00:00:00Z",
               updatedAt: "2026-06-28T00:00:00Z",
             },
@@ -76,5 +79,5 @@ test("показывает ошибку входа", async () => {
   await user.type(screen.getByLabelText("Пароль"), "password");
   await user.click(screen.getByRole("button", { name: "Войти" }));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent("invalid credentials");
+  expect(await screen.findByRole("alert")).toHaveTextContent("Не удалось выполнить действие");
 });

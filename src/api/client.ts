@@ -59,6 +59,10 @@ export const apolloClient = new ApolloClient({
   cache: new InMemoryCache({
     typePolicies: {
       User: { keyFields: ["id"] },
+      University: { keyFields: ["id"] },
+      Program: { keyFields: ["id"] },
+      Course: { keyFields: ["id"] },
+      Topic: { keyFields: ["id"] },
     },
   }),
   connectToDevTools: import.meta.env.DEV,
