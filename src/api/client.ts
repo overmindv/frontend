@@ -7,8 +7,8 @@ import {
 } from "@apollo/client";
 import { onError } from "@apollo/client/link/error";
 
-export const TOKEN_STORAGE_KEY = "soundwave.token";
-export const USER_ID_STORAGE_KEY = "soundwave.userId";
+export const TOKEN_STORAGE_KEY = "frontend.token";
+export const USER_ID_STORAGE_KEY = "frontend.userId";
 
 let unauthenticatedHandler: () => void = () => undefined;
 
@@ -63,6 +63,9 @@ export const apolloClient = new ApolloClient({
       Program: { keyFields: ["id"] },
       Course: { keyFields: ["id"] },
       Topic: { keyFields: ["id"] },
+      ITTask: { keyFields: ["id"] },
+      ITTaskSummary: { keyFields: ["id"] },
+      ITSubmission: { keyFields: ["id"] },
     },
   }),
   connectToDevTools: import.meta.env.DEV,

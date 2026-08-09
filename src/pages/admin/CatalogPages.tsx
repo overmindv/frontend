@@ -1,22 +1,26 @@
 import { useMutation, useQuery } from "@apollo/client";
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ADD_PREREQUISITE,
   CHANGE_STATUS,
+  COURSE_QUERY,
   COURSES_QUERY,
   CREATE_COURSE,
   CREATE_PROGRAM,
   CREATE_TOPIC,
   CREATE_UNIVERSITY,
   DELETE_ENTITY,
+  PROGRAM_QUERY,
   PROGRAMS_QUERY,
   REMOVE_PREREQUISITE,
   TOPIC_QUERY,
   TOPICS_QUERY,
   UNIVERSITIES_QUERY,
   UNIVERSITY_QUERY,
+  UPDATE_COURSE,
+  UPDATE_PROGRAM,
   UPDATE_TOPIC,
   UPDATE_UNIVERSITY,
   type CatalogStatus,
@@ -30,12 +34,31 @@ import { Spinner } from "../../components/common/Spinner";
 import { useAuth } from "../../context/AuthContext";
 
 const statuses: CatalogStatus[] = ["draft", "active", "hidden", "archived"];
+const degreeLevels = ["other", "bachelor", "master", "specialist", "phd"];
+const topicDifficulties = ["basic", "intro", "medium", "hard", "advanced"];
 
 function CatalogHeader({ title, back }: { title: string; back?: string }) {
-  return <div className="catalog-heading"><div>{back && <Link to={back}>← Назад</Link>}<h1>{title}</h1></div></div>;
+  return (
+    <div className="catalog-heading">
+      <div>
+        {back && <Link to={back}>← Назад</Link>}
+        <h1>{title}</h1>
+      </div>
+    </div>
+  );
 }
 
-function Actions({ kind, id, status, refetch }: { kind: keyof typeof DELETE_ENTITY; id: string; status: CatalogStatus; refetch: () => Promise<unknown> }) {
+function Actions({
+  kind,
+  id,
+  status,
+  refetch,
+}: {
+  kind: keyof typeof DELETE_ENTITY;
+  id: string;
+  status: CatalogStatus;
+  refetch: () => Promise<unknown>;
+}) {
   const { isAdmin } = useAuth();
   const [remove, removeState] = useMutation(DELETE_ENTITY[kind]);
   const [changeStatus, statusState] = useMutation(CHANGE_STATUS[kind]);
@@ -44,27 +67,92 @@ function Actions({ kind, id, status, refetch }: { kind: keyof typeof DELETE_ENTI
     return null;
   }
 
-  return <div className="catalog-actions">
-    <select aria-label="Статус" value={status} onChange={(event) => void changeStatus({ variables: { id, status: event.target.value } }).then(refetch)}>{statuses.map((item) => <option key={item}>{item}</option>)}</select>
-    <button className="button button--danger" disabled={removeState.loading} onClick={() => { if (window.confirm("Удалить объект?")) void remove({ variables: { id } }).then(refetch); }}>Удалить</button>
-    {(removeState.error || statusState.error) && <ErrorMessage message={(removeState.error ?? statusState.error)?.message ?? "Ошибка"} />}
-  </div>;
+  return (
+    <div className="catalog-actions">
+      <select
+        aria-label="Статус"
+        value={status}
+        onChange={(event) =>
+          void changeStatus({ variables: { id, status: event.target.value } }).then(refetch)
+        }
+      >
+        {statuses.map((item) => (
+          <option key={item}>{item}</option>
+        ))}
+      </select>
+      <button
+        className="button button--danger"
+        disabled={removeState.loading}
+        onClick={() => {
+          if (window.confirm("Удалить объект?")) {
+            void remove({ variables: { id } }).then(refetch);
+          }
+        }}
+      >
+        Удалить
+      </button>
+      {(removeState.error || statusState.error) && (
+        <ErrorMessage message={(removeState.error ?? statusState.error)?.message ?? "Ошибка"} />
+      )}
+    </div>
+  );
 }
 
 export function UniversitiesPage() {
   const { isAdmin } = useAuth();
-  const { data, loading, error, refetch } = useQuery<{ universities: University[] }>(UNIVERSITIES_QUERY);
+  const { data, loading, error, refetch } = useQuery<{ universities: University[] }>(
+    UNIVERSITIES_QUERY,
+  );
 
   if (loading) return <Spinner />;
 
-  return <main className="page-shell panel catalog"><CatalogHeader title="Университеты" />{isAdmin && <div className="catalog-actions"><Link className="button" to="/admin/catalog/universities/new">Добавить университет</Link><Link className="button" to="/admin/catalog/programs/new">Добавить программу</Link><Link className="button" to="/admin/catalog/courses/new">Добавить курс</Link><Link className="button" to="/admin/catalog/topics/new">Добавить тему</Link></div>}<Link to="/admin/catalog/programs">Backlog программ →</Link>{error && <ErrorMessage message={error.message} />}<div className="catalog-list">{data?.universities.map((item) => <article key={item.id} className="catalog-row"><div><Link to={`/admin/catalog/universities/${item.id}`}><strong>{item.name}</strong></Link><p>{item.shortName} · {item.city}</p><Link to={`/admin/catalog/universities/${item.id}/programs`}>Программы →</Link></div><Actions kind="university" id={item.id} status={item.status} refetch={refetch} /></article>)}</div></main>;
+  return (
+    <main className="page-shell panel catalog">
+      <CatalogHeader title="Университеты" />
+      {isAdmin && (
+        <div className="catalog-actions">
+          <Link className="button" to="/admin/catalog/universities/new">
+            Добавить университет
+          </Link>
+          <Link className="button" to="/admin/catalog/programs/new">
+            Добавить программу
+          </Link>
+          <Link className="button" to="/admin/catalog/courses/new">
+            Добавить курс
+          </Link>
+          <Link className="button" to="/admin/catalog/topics/new">
+            Добавить тему
+          </Link>
+        </div>
+      )}
+      <Link to="/admin/catalog/programs">Backlog программ →</Link>
+      {error && <ErrorMessage message={error.message} />}
+      <div className="catalog-list">
+        {data?.universities.map((item) => (
+          <article key={item.id} className="catalog-row">
+            <div>
+              <Link to={`/admin/catalog/universities/${item.id}`}>
+                <strong>{item.name}</strong>
+              </Link>
+              <p>{[item.shortName, item.city, item.country].filter(Boolean).join(" · ")}</p>
+              <Link to={`/admin/catalog/universities/${item.id}/programs`}>Программы →</Link>
+            </div>
+            <Actions kind="university" id={item.id} status={item.status} refetch={refetch} />
+          </article>
+        ))}
+      </div>
+    </main>
+  );
 }
 
 export function UniversityFormPage({ create = false }: { create?: boolean }) {
   const { id = "" } = useParams();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
-  const query = useQuery<{ university: University }>(UNIVERSITY_QUERY, { variables: { id }, skip: create });
+  const query = useQuery<{ university: University }>(UNIVERSITY_QUERY, {
+    variables: { id },
+    skip: create,
+  });
   const [createItem, createState] = useMutation(CREATE_UNIVERSITY);
   const [updateItem, updateState] = useMutation(UPDATE_UNIVERSITY);
   const item = query.data?.university;
@@ -79,168 +167,668 @@ export function UniversityFormPage({ create = false }: { create?: boolean }) {
       city: formString(values.city),
       country: formString(values.country),
       websiteUrl: formString(values.websiteUrl),
-      logoFileId: formString(values.logoFileId) || null,
+      logoFileId: optionalID(values.logoFileId),
     };
-    if (create) await createItem({ variables: { input: { ...input, status: values.status } } }); else await updateItem({ variables: { id, input } });
+    if (create) {
+      await createItem({ variables: { input: { ...input, status: formString(values.status) || "draft" } } });
+    } else {
+      await updateItem({ variables: { id, input } });
+    }
     navigate("/admin/catalog/universities");
   };
 
   if (!create && query.loading) return <Spinner />;
-  if (create && !isAdmin) return <main className="page-shell panel catalog"><CatalogHeader title="Создание университета" back="/admin/catalog/universities" /><ErrorMessage message="Создание доступно только администраторам." /></main>;
+  if (!isAdmin) return <Denied message="Редактирование доступно только администраторам." />;
 
-  return <main className="page-shell panel catalog"><CatalogHeader title={create ? "Новый университет" : isAdmin ? "Редактирование университета" : "Университет"} back="/admin/catalog/universities" />{error && <ErrorMessage message={error.message} />}{isAdmin ? <form className="form catalog-form" onSubmit={(event) => void submit(event)}><Field name="name" label="Название" required defaultValue={item?.name} /><Field name="shortName" label="Краткое название" defaultValue={item?.shortName} /><Field name="city" label="Город" defaultValue={item?.city} /><Field name="country" label="Страна" defaultValue={item?.country} /><Field name="websiteUrl" label="Сайт" type="url" defaultValue={item?.websiteUrl} /><Field name="logoFileId" label="ID логотипа Mirage" defaultValue={item?.logoFileId} />{create && <Select name="status" label="Статус" values={statuses} />}<button className="button" disabled={createState.loading || updateState.loading}>Сохранить</button></form> : item && <ReadOnly fields={[["Название", item.name], ["Краткое название", item.shortName], ["Город", item.city], ["Страна", item.country], ["Сайт", item.websiteUrl]]} />}</main>;
+  return (
+    <main className="page-shell panel catalog">
+      <CatalogHeader
+        title={create ? "Новый университет" : "Редактирование университета"}
+        back="/admin/catalog/universities"
+      />
+      {error && <ErrorMessage message={error.message} />}
+      <form className="form catalog-form" onSubmit={(event) => void submit(event)}>
+        <Field name="name" label="Название" required defaultValue={item?.name} />
+        <Field name="shortName" label="Краткое название" defaultValue={item?.shortName} />
+        <Field name="city" label="Город" defaultValue={item?.city} />
+        <Field name="country" label="Страна" defaultValue={item?.country} />
+        <Field name="websiteUrl" label="Сайт" type="url" defaultValue={item?.websiteUrl} />
+        <Field name="logoFileId" label="ID логотипа media" defaultValue={item?.logoFileId ?? ""} />
+        {create && <Select name="status" label="Статус" values={statuses} />}
+        <button className="button" disabled={createState.loading || updateState.loading}>
+          {create ? "Создать" : "Сохранить"}
+        </button>
+      </form>
+    </main>
+  );
 }
 
 export function ProgramsPage() {
   const { id } = useParams();
   const { isAdmin } = useAuth();
   const parentId = id || null;
-  const { data, loading, error, refetch } = useQuery<{ programs: Program[] }>(PROGRAMS_QUERY, { variables: { parentId } });
+  const { data, loading, error, refetch } = useQuery<{ programs: Program[] }>(PROGRAMS_QUERY, {
+    variables: { parentId },
+  });
   const [createItem, state] = useMutation(CREATE_PROGRAM);
-  const submit = (event: FormEvent<HTMLFormElement>) => createFromForm(event, (input) => createItem({ variables: { input: { universityId: parentId, ...input, degreeLevel: "other" } } }).then(() => refetch()));
+  const submit = (event: FormEvent<HTMLFormElement>) =>
+    createFromForm(event, (input) =>
+      createItem({
+        variables: { input: { universityId: parentId, ...input, degreeLevel: "other" } },
+      }).then(() => refetch()),
+    );
 
   if (loading) return <Spinner />;
 
-  return <main className="page-shell panel catalog"><CatalogHeader title={parentId ? "Программы университета" : "Backlog программ"} back="/admin/catalog/universities" />{(error || state.error) && <ErrorMessage message={(error ?? state.error)?.message ?? "Ошибка"} />}{isAdmin && <><Link className="button" to="/admin/catalog/programs/new">Добавить программу</Link><InlineCreate onSubmit={submit} label="Быстро: название программы" /></>}{data?.programs.map((item) => <article className="catalog-row" key={item.id}><div><strong>{item.name}</strong><p>{item.faculty || "Факультет не указан"}{!item.universityId && " · без университета"}</p><Link to={`/admin/catalog/programs/${item.id}/courses`}>Курсы →</Link></div><Actions kind="program" id={item.id} status={item.status} refetch={refetch} /></article>)}</main>;
+  return (
+    <main className="page-shell panel catalog">
+      <CatalogHeader title={parentId ? "Программы университета" : "Backlog программ"} back="/admin/catalog/universities" />
+      {(error || state.error) && <ErrorMessage message={(error ?? state.error)?.message ?? "Ошибка"} />}
+      {isAdmin && (
+        <>
+          <Link className="button" to="/admin/catalog/programs/new">
+            Добавить программу
+          </Link>
+          <InlineCreate onSubmit={submit} label="Быстро: название программы" />
+        </>
+      )}
+      {data?.programs.map((item) => (
+        <article className="catalog-row" key={item.id}>
+          <div>
+            <Link to={`/admin/catalog/programs/${item.id}`}>
+              <strong>{item.name}</strong>
+            </Link>
+            <p>{item.faculty || "Факультет не указан"}{!item.universityId && " · без университета"}</p>
+            <Link to={`/admin/catalog/programs/${item.id}/courses`}>Курсы →</Link>
+          </div>
+          <Actions kind="program" id={item.id} status={item.status} refetch={refetch} />
+        </article>
+      ))}
+    </main>
+  );
+}
+
+export function ProgramFormPage({ create = false }: { create?: boolean }) {
+  const { id = "" } = useParams();
+  const { isAdmin } = useAuth();
+  const navigate = useNavigate();
+  const program = useQuery<{ program: Program }>(PROGRAM_QUERY, {
+    variables: { id },
+    skip: create,
+  });
+  const universities = useQuery<{ universities: University[] }>(UNIVERSITIES_QUERY);
+  const [createItem, createState] = useMutation(CREATE_PROGRAM);
+  const [updateItem, updateState] = useMutation(UPDATE_PROGRAM);
+  const item = program.data?.program;
+  const error = program.error ?? universities.error ?? createState.error ?? updateState.error;
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const universityId = optionalID(values.universityId);
+    const input = {
+      universityId,
+      name: formString(values.name),
+      shortName: formString(values.shortName),
+      faculty: formString(values.faculty),
+      degreeLevel: formString(values.degreeLevel) || "other",
+      startYear: optionalNumber(values.startYear),
+    };
+    if (create) {
+      await createItem({ variables: { input: { ...input, status: formString(values.status) || "draft" } } });
+    } else {
+      await updateItem({ variables: { id, input: { ...input, clearUniversity: !universityId } } });
+    }
+    navigate("/admin/catalog/programs");
+  };
+
+  if (!isAdmin) return <Denied message="Редактирование доступно только администраторам." />;
+  if ((!create && program.loading) || universities.loading) return <Spinner />;
+
+  return (
+    <main className="page-shell panel catalog">
+      <CatalogHeader title={create ? "Новая программа" : "Редактирование программы"} back="/admin/catalog/programs" />
+      {error && <ErrorMessage message={error.message} />}
+      <form className="form catalog-form" onSubmit={(event) => void submit(event)}>
+        <Field name="name" label="Название" required defaultValue={item?.name} />
+        <RelationSelect
+          name="universityId"
+          label="Университет"
+          items={(universities.data?.universities ?? []).map((university) => ({
+            id: university.id,
+            label: university.name,
+          }))}
+          defaultValue={item?.universityId ?? ""}
+          emptyLabel="Без университета"
+        />
+        <Field name="shortName" label="Краткое название" defaultValue={item?.shortName} />
+        <Field name="faculty" label="Факультет" defaultValue={item?.faculty} />
+        <Select name="degreeLevel" label="Уровень" values={degreeLevels} defaultValue={item?.degreeLevel ?? "other"} />
+        <Field name="startYear" label="Год старта" type="number" defaultValue={item?.startYear ?? ""} />
+        {create && <Select name="status" label="Статус" values={statuses} />}
+        <button className="button" disabled={createState.loading || updateState.loading}>
+          {create ? "Создать" : "Сохранить"}
+        </button>
+      </form>
+    </main>
+  );
 }
 
 export function CoursesPage() {
   const { id } = useParams();
   const { isAdmin } = useAuth();
   const parentId = id || null;
-  const { data, loading, error, refetch } = useQuery<{ courses: Course[] }>(COURSES_QUERY, { variables: { parentId } });
+  const { data, loading, error, refetch } = useQuery<{ courses: Course[] }>(COURSES_QUERY, {
+    variables: { parentId },
+  });
   const [createItem, state] = useMutation(CREATE_COURSE);
-  const submit = (event: FormEvent<HTMLFormElement>) => createFromForm(event, (input) => createItem({ variables: { input: { programId: parentId, ...input } } }).then(() => refetch()));
+  const submit = (event: FormEvent<HTMLFormElement>) =>
+    createFromForm(event, (input) =>
+      createItem({ variables: { input: { programId: parentId, ...input } } }).then(() => refetch()),
+    );
 
   if (loading) return <Spinner />;
 
-  return <main className="page-shell panel catalog"><CatalogHeader title={parentId ? "Курсы программы" : "Backlog курсов"} back="/admin/catalog/universities" />{(error || state.error) && <ErrorMessage message={(error ?? state.error)?.message ?? "Ошибка"} />}{isAdmin && <><Link className="button" to="/admin/catalog/courses/new">Добавить курс</Link><InlineCreate onSubmit={submit} label="Быстро: название курса" /></>}{data?.courses.map((item) => <article className="catalog-row" key={item.id}><div><strong>{item.name}</strong><p>{item.slug}{!item.programId && " · без программы"}</p><Link to={`/admin/catalog/courses/${item.id}/topics`}>Темы →</Link></div><Actions kind="course" id={item.id} status={item.status} refetch={refetch} /></article>)}</main>;
+  return (
+    <main className="page-shell panel catalog">
+      <CatalogHeader title={parentId ? "Курсы программы" : "Backlog курсов"} back="/admin/catalog/universities" />
+      {(error || state.error) && <ErrorMessage message={(error ?? state.error)?.message ?? "Ошибка"} />}
+      {isAdmin && (
+        <>
+          <Link className="button" to="/admin/catalog/courses/new">
+            Добавить курс
+          </Link>
+          <InlineCreate onSubmit={submit} label="Быстро: название курса" />
+        </>
+      )}
+      {data?.courses.map((item) => (
+        <article className="catalog-row" key={item.id}>
+          <div>
+            <Link to={`/admin/catalog/courses/${item.id}`}>
+              <strong>{item.name}</strong>
+            </Link>
+            <p>{item.slug}{!item.programId && " · без программы"}</p>
+            <Link to={`/admin/catalog/courses/${item.id}/topics`}>Темы →</Link>
+          </div>
+          <Actions kind="course" id={item.id} status={item.status} refetch={refetch} />
+        </article>
+      ))}
+    </main>
+  );
+}
+
+export function CourseFormPage({ create = false }: { create?: boolean }) {
+  const { id = "" } = useParams();
+  const { isAdmin } = useAuth();
+  const navigate = useNavigate();
+  const course = useQuery<{ course: Course }>(COURSE_QUERY, {
+    variables: { id },
+    skip: create,
+  });
+  const universities = useQuery<{ universities: University[] }>(UNIVERSITIES_QUERY);
+  const programs = useQuery<{ programs: Program[] }>(PROGRAMS_QUERY, { variables: { parentId: null } });
+  const [createItem, createState] = useMutation(CREATE_COURSE);
+  const [updateItem, updateState] = useMutation(UPDATE_COURSE);
+  const item = course.data?.course;
+  const [universityID, setUniversityID] = useState("");
+  const [programID, setProgramID] = useState("");
+
+  useEffect(() => {
+    if (!item || programID) return;
+    const nextProgramID = item.programId ?? "";
+    setProgramID(nextProgramID);
+    setUniversityID(universityIDForProgram(nextProgramID, programs.data?.programs ?? []));
+  }, [item, programID, programs.data?.programs]);
+
+  const filteredPrograms = (programs.data?.programs ?? []).filter(
+    (programItem) => !universityID || programItem.universityId === universityID,
+  );
+  const error = course.error ?? universities.error ?? programs.error ?? createState.error ?? updateState.error;
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const selectedProgramID = optionalID(values.programId);
+    const input = {
+      programId: selectedProgramID,
+      name: formString(values.name),
+      slug: formString(values.slug),
+      description: formString(values.description),
+      semester: optionalNumber(values.semester),
+      yearNumber: optionalNumber(values.yearNumber),
+    };
+    if (create) {
+      await createItem({ variables: { input: { ...input, status: formString(values.status) || "draft" } } });
+    } else {
+      await updateItem({ variables: { id, input: { ...input, clearProgram: !selectedProgramID } } });
+    }
+    navigate("/admin/catalog/courses");
+  };
+
+  if (!isAdmin) return <Denied message="Редактирование доступно только администраторам." />;
+  if ((!create && course.loading) || universities.loading || programs.loading) return <Spinner />;
+
+  return (
+    <main className="page-shell panel catalog">
+      <CatalogHeader title={create ? "Новый курс" : "Редактирование курса"} back="/admin/catalog/courses" />
+      {error && <ErrorMessage message={error.message} />}
+      <form className="form catalog-form" onSubmit={(event) => void submit(event)}>
+        <Field name="name" label="Название" required defaultValue={item?.name} />
+        <label className="field">
+          <span>Университет</span>
+          <select
+            name="universityId"
+            value={universityID}
+            onChange={(event) => {
+              setUniversityID(event.target.value);
+              setProgramID("");
+            }}
+          >
+            <option value="">Без фильтра</option>
+            {universities.data?.universities.map((university) => (
+              <option key={university.id} value={university.id}>
+                {university.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <RelationSelect
+          name="programId"
+          label="Программа"
+          items={filteredPrograms.map((programItem) => ({
+            id: programItem.id,
+            label: programLabel(programItem, universities.data?.universities ?? []),
+          }))}
+          value={programID}
+          onChange={setProgramID}
+          emptyLabel="Без программы"
+        />
+        <Field name="slug" label="Slug" defaultValue={item?.slug} />
+        <Field name="description" label="Описание" defaultValue={item?.description} />
+        <Field name="semester" label="Семестр" type="number" defaultValue={item?.semester ?? ""} />
+        <Field name="yearNumber" label="Год обучения" type="number" defaultValue={item?.yearNumber ?? ""} />
+        {create && <Select name="status" label="Статус" values={statuses} />}
+        <button className="button" disabled={createState.loading || updateState.loading}>
+          {create ? "Создать" : "Сохранить"}
+        </button>
+      </form>
+    </main>
+  );
 }
 
 export function TopicsPage() {
   const { id } = useParams();
   const { isAdmin } = useAuth();
   const parentId = id || null;
-  const { data, loading, error, refetch } = useQuery<{ topics: Topic[]; topicTree: Array<{ topic: Topic; children: Array<{ topic: Topic }> }> }>(TOPICS_QUERY, { variables: { parentId } });
+  const { data, loading, error, refetch } = useQuery<{
+    topics: Topic[];
+    topicTree: Array<{ topic: Topic; children: Array<{ topic: Topic }> }>;
+  }>(TOPICS_QUERY, { variables: { parentId } });
   const [createItem, state] = useMutation(CREATE_TOPIC);
-  const submit = (event: FormEvent<HTMLFormElement>) => createFromForm(event, (input) => createItem({ variables: { input: { courseId: parentId, ...input } } }).then(() => refetch()));
+  const submit = (event: FormEvent<HTMLFormElement>) =>
+    createFromForm(event, (input) =>
+      createItem({ variables: { input: { courseId: parentId, ...input } } }).then(() => refetch()),
+    );
 
   if (loading) return <Spinner />;
 
-  return <main className="page-shell panel catalog"><CatalogHeader title={parentId ? "Темы курса" : "Backlog тем"} back="/admin/catalog/universities" />{(error || state.error) && <ErrorMessage message={(error ?? state.error)?.message ?? "Ошибка"} />}{isAdmin && <><Link className="button" to="/admin/catalog/topics/new">Добавить тему</Link><InlineCreate onSubmit={submit} label="Быстро: название темы" /></>}<section><h2>Иерархия</h2><ul className="topic-tree">{data?.topicTree.map((node) => <li key={node.topic.id}><Link to={`/admin/catalog/topics/${node.topic.id}`}>{node.topic.title}</Link>{node.children.length > 0 && <ul>{node.children.map((child) => <li key={child.topic.id}><Link to={`/admin/catalog/topics/${child.topic.id}`}>{child.topic.title}</Link></li>)}</ul>}</li>)}</ul></section>{data?.topics.map((item) => <article className="catalog-row" key={item.id}><Link to={`/admin/catalog/topics/${item.id}`}><strong>{item.title}</strong><p>{item.slug}{!item.courseId && " · без курса"}</p></Link><Actions kind="topic" id={item.id} status={item.status} refetch={refetch} /></article>)}</main>;
+  return (
+    <main className="page-shell panel catalog">
+      <CatalogHeader title={parentId ? "Темы курса" : "Backlog тем"} back="/admin/catalog/universities" />
+      {(error || state.error) && <ErrorMessage message={(error ?? state.error)?.message ?? "Ошибка"} />}
+      {isAdmin && (
+        <>
+          <Link className="button" to="/admin/catalog/topics/new">
+            Добавить тему
+          </Link>
+          <InlineCreate onSubmit={submit} label="Быстро: название темы" />
+        </>
+      )}
+      <section>
+        <h2>Иерархия</h2>
+        <ul className="topic-tree">
+          {data?.topicTree.map((node) => (
+            <li key={node.topic.id}>
+              <Link to={`/admin/catalog/topics/${node.topic.id}`}>{node.topic.title}</Link>
+              {node.children.length > 0 && (
+                <ul>
+                  {node.children.map((child) => (
+                    <li key={child.topic.id}>
+                      <Link to={`/admin/catalog/topics/${child.topic.id}`}>{child.topic.title}</Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+      {data?.topics.map((item) => (
+        <article className="catalog-row" key={item.id}>
+          <Link to={`/admin/catalog/topics/${item.id}`}>
+            <strong>{item.title}</strong>
+            <p>{item.slug}{!item.courseId && " · без курса"}</p>
+          </Link>
+          <Actions kind="topic" id={item.id} status={item.status} refetch={refetch} />
+        </article>
+      ))}
+    </main>
+  );
 }
 
-export function ProgramCreatePage() {
+export function TopicFormPage({ create = false }: { create?: boolean }) {
+  const { id = "" } = useParams();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
-  const { data, loading, error } = useQuery<{ universities: University[] }>(UNIVERSITIES_QUERY);
-  const [createItem, state] = useMutation(CREATE_PROGRAM);
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const values = Object.fromEntries(new FormData(event.currentTarget));
-    await createItem({ variables: { input: { universityId: optionalID(values.universityId), name: formString(values.name), shortName: formString(values.shortName), faculty: formString(values.faculty), degreeLevel: formString(values.degreeLevel) || "other", startYear: optionalNumber(values.startYear), status: formString(values.status) || "draft" } } });
-    navigate("/admin/catalog/programs");
-  };
-
-  if (!isAdmin) return <Denied />;
-  if (loading) return <Spinner />;
-
-  return <main className="page-shell panel catalog"><CatalogHeader title="Новая программа" back="/admin/catalog/programs" />{(error || state.error) && <ErrorMessage message={(error ?? state.error)?.message ?? "Ошибка"} />}<form className="form catalog-form" onSubmit={(event) => void submit(event)}><Field name="name" label="Название" required /><RelationSelect name="universityId" label="Университет" items={data?.universities ?? []} /><Field name="shortName" label="Краткое название" /><Field name="faculty" label="Факультет" /><Select name="degreeLevel" label="Уровень" values={["other", "bachelor", "master", "specialist", "phd"]} /><Field name="startYear" label="Год старта" type="number" /><Select name="status" label="Статус" values={statuses} /><button className="button">Создать</button></form></main>;
-}
-
-export function CourseCreatePage() {
-  const { isAdmin } = useAuth();
-  const navigate = useNavigate();
-  const [universityID, setUniversityID] = useState("");
-  const universities = useQuery<{ universities: University[] }>(UNIVERSITIES_QUERY);
-  const programs = useQuery<{ programs: Program[] }>(PROGRAMS_QUERY, { variables: { parentId: null } });
-  const [createItem, state] = useMutation(CREATE_COURSE);
-  const filteredPrograms = (programs.data?.programs ?? []).filter((item) => !universityID || item.universityId === universityID);
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const values = Object.fromEntries(new FormData(event.currentTarget));
-    await createItem({ variables: { input: { programId: optionalID(values.programId), name: formString(values.name), slug: formString(values.slug), description: formString(values.description), semester: optionalNumber(values.semester), yearNumber: optionalNumber(values.yearNumber), status: formString(values.status) || "draft" } } });
-    navigate("/admin/catalog/courses");
-  };
-
-  if (!isAdmin) return <Denied />;
-  if (universities.loading || programs.loading) return <Spinner />;
-
-  return <main className="page-shell panel catalog"><CatalogHeader title="Новый курс" back="/admin/catalog/courses" />{(universities.error || programs.error || state.error) && <ErrorMessage message="Ошибка" />}<form className="form catalog-form" onSubmit={(event) => void submit(event)}><Field name="name" label="Название" required /><label className="field"><span>Университет</span><select name="universityId" value={universityID} onChange={(event) => setUniversityID(event.target.value)}><option value="">Без фильтра</option>{universities.data?.universities.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><RelationSelect name="programId" label="Программа" items={filteredPrograms} emptyLabel="Без программы" /><Field name="slug" label="Slug" /><Field name="description" label="Описание" /><Field name="semester" label="Семестр" type="number" /><Field name="yearNumber" label="Год обучения" type="number" /><Select name="status" label="Статус" values={statuses} /><button className="button">Создать</button></form></main>;
-}
-
-export function TopicCreatePage() {
-  const { isAdmin } = useAuth();
-  const navigate = useNavigate();
-  const [universityID, setUniversityID] = useState("");
-  const [programID, setProgramID] = useState("");
+  const topic = useQuery<{ topic: Topic; topicPrerequisites: Array<{ prerequisiteTopicId: string }> }>(
+    TOPIC_QUERY,
+    {
+      variables: { id },
+      skip: create,
+    },
+  );
   const universities = useQuery<{ universities: University[] }>(UNIVERSITIES_QUERY);
   const programs = useQuery<{ programs: Program[] }>(PROGRAMS_QUERY, { variables: { parentId: null } });
   const courses = useQuery<{ courses: Course[] }>(COURSES_QUERY, { variables: { parentId: null } });
-  const [createItem, state] = useMutation(CREATE_TOPIC);
-  const filteredPrograms = (programs.data?.programs ?? []).filter((item) => !universityID || item.universityId === universityID);
-  const filteredCourses = (courses.data?.courses ?? []).filter((item) => !programID || item.programId === programID);
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const values = Object.fromEntries(new FormData(event.currentTarget));
-    await createItem({ variables: { input: { courseId: optionalID(values.courseId), title: formString(values.title), slug: formString(values.slug), description: formString(values.description), orderIndex: optionalNumber(values.orderIndex) ?? 0, difficulty: formString(values.difficulty) || "basic", status: formString(values.status) || "draft" } } });
-    navigate("/admin/catalog/topics");
-  };
-
-  if (!isAdmin) return <Denied />;
-  if (universities.loading || programs.loading || courses.loading) return <Spinner />;
-
-  return <main className="page-shell panel catalog"><CatalogHeader title="Новая тема" back="/admin/catalog/topics" />{(universities.error || programs.error || courses.error || state.error) && <ErrorMessage message="Ошибка" />}<form className="form catalog-form" onSubmit={(event) => void submit(event)}><Field name="title" label="Название" required /><label className="field"><span>Университет</span><select name="universityId" value={universityID} onChange={(event) => { setUniversityID(event.target.value); setProgramID(""); }}><option value="">Без фильтра</option>{universities.data?.universities.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="field"><span>Программа</span><select name="programId" value={programID} onChange={(event) => setProgramID(event.target.value)}><option value="">Без фильтра</option>{filteredPrograms.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><RelationSelect name="courseId" label="Курс" items={filteredCourses} emptyLabel="Без курса" /><Field name="slug" label="Slug" /><Field name="description" label="Описание" /><Field name="orderIndex" label="Порядок" type="number" defaultValue={0} /><Select name="difficulty" label="Сложность" values={["basic", "intro", "medium", "hard", "advanced"]} /><Select name="status" label="Статус" values={statuses} /><button className="button">Создать</button></form></main>;
-}
-
-export function TopicPage() {
-  const { id = "" } = useParams();
-  const { isAdmin } = useAuth();
-  const { data, loading, error, refetch } = useQuery<{ topic: Topic; topicPrerequisites: Array<{ prerequisiteTopicId: string }> }>(TOPIC_QUERY, { variables: { id } });
+  const topics = useQuery<{ topics: Topic[] }>(TOPICS_QUERY, { variables: { parentId: null } });
+  const [createItem, createState] = useMutation(CREATE_TOPIC);
   const [updateItem, updateState] = useMutation(UPDATE_TOPIC);
   const [add, addState] = useMutation(ADD_PREREQUISITE);
   const [remove, removeState] = useMutation(REMOVE_PREREQUISITE);
+  const item = topic.data?.topic;
+  const [universityID, setUniversityID] = useState("");
+  const [programID, setProgramID] = useState("");
+  const [courseID, setCourseID] = useState("");
+  const [parentTopicID, setParentTopicID] = useState("");
 
-  if (loading) return <Spinner />;
+  useEffect(() => {
+    if (!item || courseID) return;
+    const nextCourseID = item.courseId ?? "";
+    const nextProgramID = programIDForCourse(nextCourseID, courses.data?.courses ?? []);
+    setCourseID(nextCourseID);
+    setProgramID(nextProgramID);
+    setUniversityID(universityIDForProgram(nextProgramID, programs.data?.programs ?? []));
+    setParentTopicID(item.parentTopicId ?? "");
+  }, [courseID, courses.data?.courses, item, programs.data?.programs]);
 
-  const topic = data?.topic;
-  const back = topic?.courseId ? `/admin/catalog/courses/${topic.courseId}/topics` : "/admin/catalog/topics";
-  const combinedError = error ?? updateState.error ?? addState.error ?? removeState.error;
+  const filteredPrograms = (programs.data?.programs ?? []).filter(
+    (programItem) => !universityID || programItem.universityId === universityID,
+  );
+  const filteredCourses = (courses.data?.courses ?? []).filter(
+    (courseItem) => !programID || courseItem.programId === programID,
+  );
+  const parentTopics = (topics.data?.topics ?? []).filter(
+    (topicItem) => topicItem.id !== id && sameOptionalValue(topicItem.courseId, courseID),
+  );
+  const error =
+    topic.error ??
+    universities.error ??
+    programs.error ??
+    courses.error ??
+    topics.error ??
+    createState.error ??
+    updateState.error ??
+    addState.error ??
+    removeState.error;
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const values = Object.fromEntries(new FormData(event.currentTarget));
-    await updateItem({ variables: { id, input: { title: values.title, slug: values.slug, description: values.description, parentTopicId: values.parentTopicId || null, clearParentTopic: !values.parentTopicId, orderIndex: Number(values.orderIndex), difficulty: values.difficulty } } });
-    await refetch();
+    const selectedCourseID = optionalID(values.courseId);
+    const selectedParentTopicID = optionalID(values.parentTopicId);
+    const input = {
+      courseId: selectedCourseID,
+      parentTopicId: selectedParentTopicID,
+      title: formString(values.title),
+      slug: formString(values.slug),
+      description: formString(values.description),
+      orderIndex: optionalNumber(values.orderIndex) ?? 0,
+      difficulty: formString(values.difficulty) || "basic",
+    };
+    if (create) {
+      await createItem({ variables: { input: { ...input, status: formString(values.status) || "draft" } } });
+      navigate("/admin/catalog/topics");
+      return;
+    }
+    await updateItem({
+      variables: {
+        id,
+        input: {
+          ...input,
+          clearCourse: !selectedCourseID,
+          clearParentTopic: !selectedParentTopicID,
+        },
+      },
+    });
+    await topic.refetch();
   };
 
-  return <main className="page-shell panel catalog"><CatalogHeader title="Тема" back={back} />{combinedError && <ErrorMessage message={combinedError.message} />}{topic && (isAdmin ? <form className="form catalog-form" onSubmit={(event) => void submit(event)}><Field name="title" label="Название" required defaultValue={topic.title} /><Field name="slug" label="Slug" defaultValue={topic.slug} /><Field name="description" label="Описание" defaultValue={topic.description} /><Field name="parentTopicId" label="ID родительской темы" defaultValue={topic.parentTopicId ?? ""} /><Field name="orderIndex" label="Порядок" type="number" defaultValue={topic.orderIndex} /><Select name="difficulty" label="Сложность" defaultValue={topic.difficulty} values={["intro", "basic", "medium", "hard", "advanced"]} /><button className="button">Сохранить</button></form> : <ReadOnly fields={[["Название", topic.title], ["Slug", topic.slug], ["Описание", topic.description], ["Курс", topic.courseId ?? "Без курса"]]} />)}<section><h2>Пререквизиты</h2>{isAdmin && <form className="inline-form" onSubmit={(event) => { event.preventDefault(); const prerequisiteTopicId = String(new FormData(event.currentTarget).get("prerequisiteTopicId")); void add({ variables: { input: { topicId: id, prerequisiteTopicId } } }).then(() => refetch()); event.currentTarget.reset(); }}><Field name="prerequisiteTopicId" label="ID темы" required /><button className="button">Добавить</button></form>}{data?.topicPrerequisites.map((item) => <div className="prerequisite" key={item.prerequisiteTopicId}><code>{item.prerequisiteTopicId}</code>{isAdmin && <button onClick={() => void remove({ variables: { input: { topicId: id, prerequisiteTopicId: item.prerequisiteTopicId } } }).then(() => refetch())}>Удалить</button>}</div>)}</section></main>;
+  if (!isAdmin) return <Denied message="Редактирование доступно только администраторам." />;
+  if (
+    (!create && topic.loading) ||
+    universities.loading ||
+    programs.loading ||
+    courses.loading ||
+    topics.loading
+  ) {
+    return <Spinner />;
+  }
+
+  return (
+    <main className="page-shell panel catalog">
+      <CatalogHeader title={create ? "Новая тема" : "Редактирование темы"} back="/admin/catalog/topics" />
+      {error && <ErrorMessage message={error.message} />}
+      <form className="form catalog-form" onSubmit={(event) => void submit(event)}>
+        <Field name="title" label="Название" required defaultValue={item?.title} />
+        <label className="field">
+          <span>Университет</span>
+          <select
+            name="universityId"
+            value={universityID}
+            onChange={(event) => {
+              setUniversityID(event.target.value);
+              setProgramID("");
+              setCourseID("");
+              setParentTopicID("");
+            }}
+          >
+            <option value="">Без фильтра</option>
+            {universities.data?.universities.map((university) => (
+              <option key={university.id} value={university.id}>
+                {university.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <RelationSelect
+          name="programId"
+          label="Программа"
+          items={filteredPrograms.map((programItem) => ({
+            id: programItem.id,
+            label: programLabel(programItem, universities.data?.universities ?? []),
+          }))}
+          value={programID}
+          onChange={(value) => {
+            setProgramID(value);
+            setCourseID("");
+            setParentTopicID("");
+          }}
+          emptyLabel="Без фильтра"
+        />
+        <RelationSelect
+          name="courseId"
+          label="Курс"
+          items={filteredCourses.map((courseItem) => ({
+            id: courseItem.id,
+            label: courseLabel(courseItem, programs.data?.programs ?? []),
+          }))}
+          value={courseID}
+          onChange={(value) => {
+            setCourseID(value);
+            setParentTopicID("");
+          }}
+          emptyLabel="Без курса"
+        />
+        <RelationSelect
+          name="parentTopicId"
+          label="Родительская тема"
+          items={parentTopics.map((topicItem) => ({ id: topicItem.id, label: topicItem.title }))}
+          value={parentTopicID}
+          onChange={setParentTopicID}
+          emptyLabel="Без родительской темы"
+        />
+        <Field name="slug" label="Slug" defaultValue={item?.slug} />
+        <Field name="description" label="Описание" defaultValue={item?.description} />
+        <Field name="orderIndex" label="Порядок" type="number" defaultValue={item?.orderIndex ?? 0} />
+        <Select name="difficulty" label="Сложность" values={topicDifficulties} defaultValue={item?.difficulty ?? "basic"} />
+        {create && <Select name="status" label="Статус" values={statuses} />}
+        <button className="button" disabled={createState.loading || updateState.loading}>
+          {create ? "Создать" : "Сохранить"}
+        </button>
+      </form>
+      {!create && (
+        <section>
+          <h2>Пререквизиты</h2>
+          <form
+            className="inline-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const prerequisiteTopicId = String(new FormData(event.currentTarget).get("prerequisiteTopicId"));
+              void add({ variables: { input: { topicId: id, prerequisiteTopicId } } }).then(() => topic.refetch());
+              event.currentTarget.reset();
+            }}
+          >
+            <RelationSelect
+              name="prerequisiteTopicId"
+              label="Тема"
+              items={parentTopics.map((topicItem) => ({ id: topicItem.id, label: topicItem.title }))}
+              emptyLabel="Выберите тему"
+            />
+            <button className="button">Добавить</button>
+          </form>
+          {topic.data?.topicPrerequisites.map((prerequisite) => (
+            <div className="prerequisite" key={prerequisite.prerequisiteTopicId}>
+              <code>{topicTitle(prerequisite.prerequisiteTopicId, topics.data?.topics ?? [])}</code>
+              <button
+                onClick={() =>
+                  void remove({
+                    variables: {
+                      input: { topicId: id, prerequisiteTopicId: prerequisite.prerequisiteTopicId },
+                    },
+                  }).then(() => topic.refetch())
+                }
+              >
+                Удалить
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
+    </main>
+  );
 }
 
-function ReadOnly({ fields }: { fields: Array<[string, string | number | null | undefined]> }) {
-  return <dl className="catalog-readonly">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || "—"}</dd></div>)}</dl>;
+function Denied({ message = "Ошибка" }: { message?: string }) {
+  return (
+    <main className="page-shell panel catalog">
+      <ErrorMessage message={message} />
+    </main>
+  );
 }
 
-function Denied() {
-  return <main className="page-shell panel catalog"><ErrorMessage message="Ошибка" /></main>;
+function RelationSelect({
+  name,
+  label,
+  items,
+  emptyLabel = "Не привязывать",
+  defaultValue,
+  value,
+  onChange,
+}: {
+  name: string;
+  label: string;
+  items: Array<{ id: string; label: string }>;
+  emptyLabel?: string;
+  defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
+}) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <select
+        name={name}
+        defaultValue={value === undefined ? defaultValue : undefined}
+        value={value}
+        onChange={onChange ? (event) => onChange(event.target.value) : undefined}
+      >
+        <option value="">{emptyLabel}</option>
+        {items.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
-function RelationSelect({ name, label, items, emptyLabel = "Не привязывать" }: { name: string; label: string; items: Array<{ id: string; name: string }>; emptyLabel?: string }) {
-  return <label className="field"><span>{label}</span><select name={name}><option value="">{emptyLabel}</option>{items.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>;
+function Field({
+  label,
+  defaultValue,
+  ...props
+}: {
+  label: string;
+  name: string;
+  required?: boolean;
+  type?: string;
+  defaultValue?: string | number | null;
+}) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <input {...props} defaultValue={defaultValue ?? ""} />
+    </label>
+  );
 }
 
-function Field({ label, ...props }: { label: string; name: string; required?: boolean; type?: string; defaultValue?: string | number }) {
-  return <label className="field"><span>{label}</span><input {...props} /></label>;
+function Select({
+  label,
+  values,
+  ...props
+}: {
+  label: string;
+  name: string;
+  values: readonly string[];
+  defaultValue?: string;
+}) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <select {...props}>
+        {values.map((value) => (
+          <option key={value} value={value}>
+            {value}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
-function Select({ label, values, ...props }: { label: string; name: string; values: readonly string[]; defaultValue?: string }) {
-  return <label className="field"><span>{label}</span><select {...props}>{values.map((value) => <option key={value}>{value}</option>)}</select></label>;
-}
-
-function InlineCreate({ onSubmit, label }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void; label: string }) {
-  return <form className="inline-form" onSubmit={onSubmit}><Field name="name" label={label} required /><button className="button">Создать</button></form>;
+function InlineCreate({
+  onSubmit,
+  label,
+}: {
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  label: string;
+}) {
+  return (
+    <form className="inline-form" onSubmit={onSubmit}>
+      <Field name="name" label={label} required />
+      <button className="button">Создать</button>
+    </form>
+  );
 }
 
 function createFromForm(event: FormEvent<HTMLFormElement>, callback: (input: { name: string }) => Promise<unknown>) {
@@ -251,21 +839,51 @@ function createFromForm(event: FormEvent<HTMLFormElement>, callback: (input: { n
   void callback({ name }).then(() => form.reset());
 }
 
-function formString(value: FormDataEntryValue | undefined) {
+function formString(value: FormDataEntryValue | undefined | null) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function optionalID(value: FormDataEntryValue | undefined) {
+function optionalID(value: FormDataEntryValue | undefined | null) {
   const result = formString(value);
 
   return result || null;
 }
 
-function optionalNumber(value: FormDataEntryValue | undefined) {
+function optionalNumber(value: FormDataEntryValue | undefined | null) {
   const result = formString(value);
   if (!result) {
     return null;
   }
 
   return Number(result);
+}
+
+function universityIDForProgram(programID: string, programs: Program[]) {
+  return programs.find((program) => program.id === programID)?.universityId ?? "";
+}
+
+function programIDForCourse(courseID: string, courses: Course[]) {
+  return courses.find((course) => course.id === courseID)?.programId ?? "";
+}
+
+function programLabel(program: Program, universities: University[]) {
+  const university = universities.find((item) => item.id === program.universityId);
+
+  return `${program.name} · ${university?.name ?? "без университета"}`;
+}
+
+function courseLabel(course: Course, programs: Program[]) {
+  const program = programs.find((item) => item.id === course.programId);
+
+  return `${course.name} · ${program?.name ?? "без программы"}`;
+}
+
+function topicTitle(topicID: string, topics: Topic[]) {
+  const topic = topics.find((item) => item.id === topicID);
+
+  return topic ? topic.title : topicID;
+}
+
+function sameOptionalValue(left: string | null | undefined, right: string) {
+  return (left ?? "") === right;
 }

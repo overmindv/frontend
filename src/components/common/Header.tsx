@@ -6,20 +6,23 @@ export function Header() {
 
   return (
     <header className="header">
-      <NavLink className="brand" to={isAuthenticated ? "/profile" : "/login"}>
-        <span className="brand__mark">S</span>
+      <NavLink className="brand" to="/tasks">
+        <span className="brand__mark">O</span>
         <span>
-          <strong>Soundwave</strong>
-          <small>Overmindv account</small>
+          <strong>Overmindv</strong>
+          <small>practice console</small>
         </span>
       </NavLink>
 
       <nav className="nav" aria-label="Основная навигация">
+        <NavLink to="/tasks">Задачи</NavLink>
         {isAuthenticated ? (
           <>
+            <NavLink to="/history">История</NavLink>
             <NavLink to="/profile">Профиль</NavLink>
-            <NavLink to="/admin/catalog/universities">Каталог</NavLink>
-            {isAdmin && <NavLink to="/admin/users">Пользователи</NavLink>}
+            {isAdmin && <NavLink to="/admin/tasks">Управление</NavLink>}
+            {isAdmin && <NavLink to="/admin/catalog/universities">Каталог</NavLink>}
+            {isAdmin && <NavLink to="/admin/users">Люди</NavLink>}
             <button className="button button--ghost button--small" onClick={logout} type="button">
               Выйти
             </button>
