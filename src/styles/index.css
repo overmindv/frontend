@@ -364,6 +364,9 @@ body::before {
 .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .tag-list label { cursor: pointer; }
 .tag-list input { margin-right: 6px; }
+.tag-list button.status-tag { cursor: pointer; transition: color 140ms ease, border-color 140ms ease, background 140ms ease; }
+.tag-list button.status-tag:hover { color: #d9f4ff; background: #12334a; border-color: var(--accent); }
+.field-hint { margin: 0; padding: 12px 14px; color: var(--muted); background: #091521; border-left: 2px solid #2c536e; font-size: 0.82rem; }
 .programming-task { display: grid; gap: 22px; }
 .example-list { display: grid; gap: 12px; }
 .example-list pre { overflow-x: auto; white-space: pre-wrap; }

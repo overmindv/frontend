@@ -29,6 +29,7 @@ const pageSize = 20;
 // CollectedTasksPage объединяет ручной запуск, журнал job и очередь модерации.
 export function CollectedTasksPage() {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const selectedJobID = searchParams.get("job") ?? "";
   const [offset, setOffset] = useState(0);
@@ -56,18 +57,24 @@ export function CollectedTasksPage() {
   const [publishedTo, setPublishedTo] = useState(() => localDateTime(new Date()));
   const [urls, setURLs] = useState("");
   const [limit, setLimit] = useState(100);
+  const websiteURLs = parseWebsiteURLs(urls);
+  const tooManyURLs = websiteURLs.length > 20;
 
   if (!isAdmin) return <Denied />;
 
   const submitCollection = async (event: FormEvent) => {
     event.preventDefault();
-    const websiteUrls = urls.split("\n").map((value) => value.trim()).filter(Boolean);
-    await start({ variables: { input: {
+    if (tooManyURLs) return;
+    const result = await start({ variables: { input: {
       idempotencyKey: crypto.randomUUID(), telegramChannels: selectedChannels,
       ...(selectedChannels.length ? { publishedFrom: new Date(publishedFrom).toISOString(), publishedTo: new Date(publishedTo).toISOString() } : {}),
-      websiteUrls, maxItemsPerSource: limit,
-    } } });
+      websiteUrls: websiteURLs, maxItemsPerSource: limit,
+    } } }).catch(() => null);
+    if (!result) return;
     await jobs.refetch();
+    setURLs("");
+    const jobID = result.data?.startTaskCollection?.id;
+    if (jobID) navigate(`/admin/collected-tasks?job=${jobID}`);
   };
   const items = candidates.data?.taskCandidates.items ?? [];
 
@@ -76,11 +83,13 @@ export function CollectedTasksPage() {
     <section className="panel">
       <h2>Новый сбор</h2>
       <form className="entity-form" onSubmit={(event) => void submitCollection(event)}>
-        <fieldset className="field"><legend>Telegram-каналы</legend><div className="tag-list">{sources.data?.taskCollectionSources.telegramChannels.map((channel) => <label className="status-tag" key={channel}><input checked={selectedChannels.includes(channel)} onChange={(event) => setSelectedChannels((current) => event.target.checked ? [...current, channel] : current.filter((item) => item !== channel))} type="checkbox" /> @{channel}</label>)}</div></fieldset>
+        <fieldset className="field"><legend>Telegram-каналы</legend>{sources.data?.taskCollectionSources.telegramChannels.length ? <div className="tag-list">{sources.data.taskCollectionSources.telegramChannels.map((channel) => <label className="status-tag" key={channel}><input checked={selectedChannels.includes(channel)} onChange={(event) => setSelectedChannels((current) => event.target.checked ? [...current, channel] : current.filter((item) => item !== channel))} type="checkbox" /> @{channel}</label>)}</div> : <p className="field-hint">Telegram отключён. Сбор с сайтов работает без Telegram API.</p>}</fieldset>
         <div className="inline-form"><label className="field"><span>С даты</span><input disabled={!selectedChannels.length} type="datetime-local" value={publishedFrom} onChange={(event) => setPublishedFrom(event.target.value)} /></label><label className="field"><span>До даты</span><input disabled={!selectedChannels.length} type="datetime-local" value={publishedTo} onChange={(event) => setPublishedTo(event.target.value)} /></label><label className="field"><span>Лимит на источник</span><input min={1} max={500} type="number" value={limit} onChange={(event) => setLimit(Number(event.target.value))} /></label></div>
-        <label className="field"><span>Прямые HTTPS-ссылки Codeforces, LeetCode или CodeRun — по одной в строке</span><textarea rows={4} value={urls} onChange={(event) => setURLs(event.target.value)} /></label>
+        <label className="field"><span>Ссылки Codeforces, LeetCode или CodeRun</span><textarea rows={6} placeholder="Вставьте до 20 ссылок — по одной в строке или списком" value={urls} onChange={(event) => setURLs(event.target.value)} /><small>{websiteURLs.length} из 20 уникальных ссылок. Повторные и похожие варианты URL будут объединены.</small></label>
+        <div className="tag-list"><button className="status-tag" type="button" onClick={() => appendURL(setURLs, "https://coderun.yandex.ru/problem/knight-move")}>+ CodeRun: Ход конём</button><button className="status-tag" type="button" onClick={() => appendURL(setURLs, "https://leetcode.com/problems/two-sum")}>+ LeetCode: Two Sum</button><button className="status-tag" type="button" onClick={() => appendURL(setURLs, "https://codeforces.com/problemset/problem/1/A")}>+ Codeforces: Theatre Square</button></div>
+        {tooManyURLs && <ErrorMessage message="За один запуск можно передать не более 20 уникальных ссылок." />}
         {startState.error && <ErrorMessage message={getErrorMessage(startState.error)} />}
-        <button className="button button--primary" disabled={startState.loading || (!selectedChannels.length && !urls.trim())}>{startState.loading ? "Ставим в очередь…" : "Собрать задачи"}</button>
+        <button className="button button--primary" disabled={startState.loading || tooManyURLs || (!selectedChannels.length && !websiteURLs.length)}>{startState.loading ? "Ставим в очередь…" : `Собрать${websiteURLs.length ? ` ${websiteURLs.length} задач` : " задачи"}`}</button>
       </form>
     </section>
     <section className="panel"><h2>Последние запуски</h2>{jobs.error && <ErrorMessage message={getErrorMessage(jobs.error)} />}<div className="catalog-list">{jobs.data?.taskCollectionJobs.items.map((job) => <article className="catalog-row" key={job.id}><div><strong>{job.trigger === "manual" ? "Ручной сбор" : "Плановый сбор"}</strong><p>{formatDate(job.createdAt)} · {job.status}</p></div><span>{job.importedTotal} новых · {job.duplicatesTotal} дублей · {job.errorCount} ошибок</span><Link className="text-link" to={`/admin/collected-tasks?job=${job.id}`}>Детали</Link></article>)}</div></section>
@@ -136,5 +145,7 @@ function ExamplesEditor({ examples, onChange }: { examples: ITTaskExample[]; onC
 function Denied() { return <main className="page-shell panel"><h1>Недостаточно прав</h1><p>Раздел доступен администраторам.</p></main>; }
 function splitCSV(value: string) { return value.split(",").map((item) => item.trim()).filter(Boolean); }
 function splitLines(value: string) { return value.split("\n").map((item) => item.trim()).filter(Boolean); }
+function parseWebsiteURLs(value: string) { const matches = value.match(/https:\/\/[^\s,\][(){}<>]+/gi) ?? []; return [...new Set(matches.map((item) => item.replace(/[.;]+$/, "")))]; }
+function appendURL(setter: (value: (current: string) => string) => void, url: string) { setter((current) => current.trim() ? `${current.trim()}\n${url}` : url); }
 function localDateTime(value: Date) { const offset = value.getTimezoneOffset() * 60000; return new Date(value.getTime() - offset).toISOString().slice(0, 16); }
 function formatDate(value: string) { return new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }
