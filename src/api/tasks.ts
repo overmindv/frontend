@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 
 export type ITTaskStatus = "draft" | "published" | "archived";
-export type ITTaskType = "single_choice" | "multiple_choice";
+export type ITTaskType = "single_choice" | "multiple_choice" | "programming";
 export type ITTaskDifficulty = "easy" | "medium" | "hard";
 export type ITSubmissionVerdict = "accepted" | "wrong_answer";
 
@@ -28,6 +28,23 @@ export interface ITTaskSummary {
 export interface ITTask extends ITTaskSummary {
   statement: string;
   options: ITTaskOption[];
+  tags: string[];
+  examples: ITTaskExample[];
+  constraints: string[];
+  source?: ITTaskSource | null;
+}
+
+export interface ITTaskExample {
+  input: string;
+  output: string;
+  explanation: string;
+}
+
+export interface ITTaskSource {
+  sourceId: string;
+  sourceName: string;
+  sourceUrl: string;
+  publishedAt?: string | null;
 }
 
 export interface ITTaskList {
@@ -72,6 +89,9 @@ export interface ITTaskInput {
     text: string;
     isCorrect: boolean;
   }>;
+  tags?: string[];
+  examples?: ITTaskExample[];
+  constraints?: string[];
 }
 
 export interface ITSubmissionInput {
@@ -114,6 +134,10 @@ const TASK_FIELDS = gql`
       position
       isCorrect
     }
+    tags
+    examples { input output explanation }
+    constraints
+    source { sourceId sourceName sourceUrl publishedAt }
   }
 `;
 

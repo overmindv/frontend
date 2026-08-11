@@ -7,6 +7,7 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { CourseFormPage, CoursesPage, ProgramFormPage, ProgramsPage, TopicFormPage, TopicsPage, UniversitiesPage, UniversityFormPage } from "./pages/admin/CatalogPages";
 import { AdminTaskFormPage, AdminTasksPage } from "./pages/admin/TasksAdminPages";
 import { AdminUsersPage } from "./pages/admin/UsersPage";
+import { CandidateEditorPage, CollectedTasksPage } from "./pages/admin/CollectedTasksPage";
 import { SubmissionDetailPage, SubmissionHistoryPage, TaskSolvePage, TasksPage } from "./pages/tasks/TasksPages";
 
 function HomeRedirect() {
@@ -28,6 +29,8 @@ export function AppRoutes() {
       <Route path="/admin/tasks/new" element={<PrivateRoute><AdminTaskFormPage create /></PrivateRoute>} />
       <Route path="/admin/tasks/:id" element={<PrivateRoute><AdminTaskFormPage /></PrivateRoute>} />
       <Route path="/admin/users" element={<PrivateRoute><AdminUsersPage /></PrivateRoute>} />
+      <Route path="/admin/collected-tasks" element={<PrivateRoute><CollectedTasksPage /></PrivateRoute>} />
+      <Route path="/admin/collected-tasks/:id" element={<PrivateRoute><CandidateEditorPage /></PrivateRoute>} />
       <Route path="/admin/catalog/universities" element={<PrivateRoute><UniversitiesPage /></PrivateRoute>} />
       <Route path="/admin/catalog/universities/new" element={<PrivateRoute><UniversityFormPage create /></PrivateRoute>} />
       <Route path="/admin/catalog/universities/:id" element={<PrivateRoute><UniversityFormPage /></PrivateRoute>} />

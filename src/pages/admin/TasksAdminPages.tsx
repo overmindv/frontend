@@ -78,7 +78,7 @@ export function AdminTasksPage() {
 
       <section className="admin-filterbar">
         <AdminSelect label="Статус" value={status} onChange={(value) => { setStatus(value as ITTaskStatus | ""); setOffset(0); }} options={[["", "Все"], ["draft", "Черновик"], ["published", "Опубликован"], ["archived", "В архиве"]]} />
-        <AdminSelect label="Тип" value={taskType} onChange={(value) => { setTaskType(value as ITTaskType | ""); setOffset(0); }} options={[["", "Все"], ["single_choice", "Один ответ"], ["multiple_choice", "Несколько ответов"]]} />
+        <AdminSelect label="Тип" value={taskType} onChange={(value) => { setTaskType(value as ITTaskType | ""); setOffset(0); }} options={[["", "Все"], ["single_choice", "Один ответ"], ["multiple_choice", "Несколько ответов"], ["programming", "Программирование"]]} />
         <AdminSelect label="Сложность" value={difficulty} onChange={(value) => { setDifficulty(value as ITTaskDifficulty | ""); setOffset(0); }} options={[["", "Любая"], ["easy", "Начальная"], ["medium", "Средняя"], ["hard", "Сложная"]]} />
       </section>
 
@@ -182,9 +182,11 @@ export function AdminTaskFormPage({ create = false }: { create?: boolean }) {
       return {
         ...current,
         taskType,
-        options: taskType === "single_choice"
+        options: taskType === "programming"
+          ? []
+          : taskType === "single_choice"
           ? current.options.map((option) => ({ ...option, isCorrect: option.key === firstCorrect }))
-          : current.options,
+          : current.options.length >= 2 ? current.options : [{ ...newOption(), isCorrect: true }, newOption()],
       };
     });
   };
@@ -249,14 +251,14 @@ export function AdminTaskFormPage({ create = false }: { create?: boolean }) {
           <div className="editor-section__content">
             <div className="editor-section__heading"><h2>Классификация</h2><p>Тема необязательна и может быть назначена позже.</p></div>
             <div className="form-grid form-grid--three">
-              <label className="field"><span>Тип</span><select value={form.taskType} onChange={(event) => changeTaskType(event.target.value as ITTaskType)}><option value="single_choice">Один ответ</option><option value="multiple_choice">Несколько ответов</option></select></label>
+              <label className="field"><span>Тип</span><select value={form.taskType} onChange={(event) => changeTaskType(event.target.value as ITTaskType)}><option value="single_choice">Один ответ</option><option value="multiple_choice">Несколько ответов</option><option value="programming">Программирование</option></select></label>
               <label className="field"><span>Сложность</span><select value={form.difficulty} onChange={(event) => setForm({ ...form, difficulty: event.target.value as ITTaskDifficulty })}><option value="easy">Начальная</option><option value="medium">Средняя</option><option value="hard">Сложная</option></select></label>
               <label className="field"><span>Тема</span><select value={form.topicId} onChange={(event) => setForm({ ...form, topicId: event.target.value })}><option value="">Без темы</option>{topicsQuery.data?.topics.map((topic) => <option key={topic.id} value={topic.id}>{topic.title}</option>)}</select></label>
             </div>
           </div>
         </section>
 
-        <section className="editor-section">
+        {form.taskType !== "programming" && <section className="editor-section">
           <div className="editor-section__number">03</div>
           <div className="editor-section__content">
             <div className="editor-section__heading editor-section__heading--actions">
@@ -277,7 +279,7 @@ export function AdminTaskFormPage({ create = false }: { create?: boolean }) {
               ))}
             </div>
           </div>
-        </section>
+        </section>}
 
         <footer className="editor-actions">
           <Link className="button button--ghost" to="/admin/tasks">Отмена</Link>
@@ -317,7 +319,11 @@ function AdminTaskRow({ task, refetch }: { task: ITTaskList["items"][number]; re
         <span>{typeLabel(task.taskType)} · {difficultyLabel(task.difficulty)} · версия {task.versionNumber}</span>
       </div>
       <div className="admin-task-row__actions">
-        <Link className="text-link" to={`/admin/tasks/${task.id}`}>Редактировать</Link>
+        {task.taskType === "programming" ? (
+          <Link className="text-link" to={`/tasks/${task.id}`}>Открыть</Link>
+        ) : (
+          <Link className="text-link" to={`/admin/tasks/${task.id}`}>Редактировать</Link>
+        )}
         <button className="text-button" disabled={statusState.loading} onClick={() => void applyStatus()}>{next.label}</button>
         <button className="text-button text-button--danger" disabled={deleteState.loading} onClick={() => void removeTask()}>Удалить</button>
       </div>
@@ -368,6 +374,7 @@ function formInput(form: TaskFormState): ITTaskInput {
 // validateTaskInput проверяет понятные ограничения до отправки на сервер.
 function validateTaskInput(input: ITTaskInput) {
   if (!input.title || !input.statement) return "Заполните название и условие.";
+  if (input.taskType === "programming") return input.options.length === 0 ? null : "У programming-задачи не должно быть вариантов ответа.";
   if (input.options.length < 2) return "Добавьте минимум два варианта ответа.";
   if (input.options.some((option) => !option.text)) return "Заполните текст каждого варианта.";
   const normalized = input.options.map((option) => option.text.toLocaleLowerCase("ru-RU"));
@@ -394,6 +401,7 @@ function statusLabel(status: ITTaskStatus) {
 
 // typeLabel переводит тип теста.
 function typeLabel(taskType: ITTaskType) {
+  if (taskType === "programming") return "Программирование";
   return taskType === "single_choice" ? "Один ответ" : "Несколько ответов";
 }
 

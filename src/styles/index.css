@@ -359,6 +359,18 @@ body::before {
 .catalog-readonly div { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .catalog-readonly dt { color: var(--muted); font-size: 0.83rem; }
 .catalog-readonly dd { margin: 4px 0 0; }
+.collected-page { display: grid; gap: 22px; }
+.collected-page .panel { display: grid; gap: 18px; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-list label { cursor: pointer; }
+.tag-list input { margin-right: 6px; }
+.programming-task { display: grid; gap: 22px; }
+.example-list { display: grid; gap: 12px; }
+.example-list pre { overflow-x: auto; white-space: pre-wrap; }
+.toast-stack { position: fixed; z-index: 50; right: 24px; bottom: 24px; display: grid; gap: 12px; width: min(390px, calc(100vw - 32px)); }
+.collection-toast { position: relative; display: grid; gap: 8px; padding: 20px; background: #102235; border: 1px solid var(--accent); border-radius: 7px; box-shadow: 0 18px 50px #0009; }
+.collection-toast .text-button { position: absolute; top: 8px; right: 10px; font-size: 1.4rem; }
+.collection-toast a { color: var(--accent); }
 
 @media (max-width: 980px) {
   .header { align-items: flex-start; }

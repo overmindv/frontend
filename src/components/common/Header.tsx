@@ -21,6 +21,7 @@ export function Header() {
             <NavLink to="/history">История</NavLink>
             <NavLink to="/profile">Профиль</NavLink>
             {isAdmin && <NavLink to="/admin/tasks">Управление</NavLink>}
+            {isAdmin && <NavLink to="/admin/collected-tasks">Сбор</NavLink>}
             {isAdmin && <NavLink to="/admin/catalog/universities">Каталог</NavLink>}
             {isAdmin && <NavLink to="/admin/users">Люди</NavLink>}
             <button className="button button--ghost button--small" onClick={logout} type="button">

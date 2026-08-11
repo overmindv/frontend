@@ -95,3 +95,54 @@ test("пользователь решает открытую версию тес
   expect(await screen.findByText("Ответ принят")).toBeInTheDocument();
   expect(screen.getByText("Тест был обновлён")).toBeInTheDocument();
 });
+
+// TestProgrammingTaskIsReadOnly проверяет публичный режим без формы отправки ответа.
+test("programming-задача показывает материалы без формы ответа", async () => {
+  render(
+    <MockedProvider
+      addTypename={false}
+      mocks={[{
+        request: { query: IT_TASK_QUERY, variables: { id: "programming-id" } },
+        result: {
+          data: {
+            itTask: {
+              ...task,
+              id: "programming-id",
+              taskVersionId: "programming-version-id",
+              title: "Калькулятор",
+              statement: "Вычислите значение выражения",
+              taskType: "programming",
+              options: [],
+              tags: ["math"],
+              examples: [{ input: "2 + 2", output: "4", explanation: "Сложение" }],
+              constraints: ["Ввод корректен"],
+              source: {
+                sourceId: "coderun",
+                sourceName: "CodeRun",
+                sourceUrl: "https://coderun.yandex.ru/problem/calculator",
+                publishedAt: null,
+              },
+            },
+          },
+        },
+      }]}
+    >
+      <MemoryRouter initialEntries={["/tasks/programming-id"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/tasks/:id" element={<TaskSolvePage />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    </MockedProvider>,
+  );
+
+  expect(await screen.findByRole("heading", { name: "Калькулятор" })).toBeInTheDocument();
+  expect(screen.getByText("math")).toBeInTheDocument();
+  expect(screen.getByText("Ввод корректен")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /Открыть оригинал/ })).toHaveAttribute(
+    "href",
+    "https://coderun.yandex.ru/problem/calculator",
+  );
+  expect(screen.queryByRole("button", { name: "Проверить ответ" })).not.toBeInTheDocument();
+});
