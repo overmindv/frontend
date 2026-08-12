@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@apollo/client": "3.13.9",
+    "apollo-upload-client": "18.0.1",
     "graphql": "16.11.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",

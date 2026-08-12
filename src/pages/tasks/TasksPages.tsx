@@ -21,6 +21,7 @@ import {
 import { ErrorMessage } from "../../components/common/ErrorMessage";
 import { Spinner } from "../../components/common/Spinner";
 import { useAuth } from "../../context/AuthContext";
+import { ProgrammingTaskSolve } from "./ProgrammingTaskSolve";
 
 const pageSize = 12;
 
@@ -195,6 +196,10 @@ export function TaskSolvePage() {
     return <main className="page-shell panel"><ErrorMessage message={getErrorMessage(error)} /></main>;
   }
 
+  if (task.taskType === "programming") {
+    return <ProgrammingTaskSolve task={task} isAuthenticated={isAuthenticated} />;
+  }
+
   return (
     <main className="page-shell solve-layout">
       <aside className="solve-aside">
@@ -202,9 +207,7 @@ export function TaskSolvePage() {
         <div className="solve-index">IT / {task.versionNumber.toString().padStart(2, "0")}</div>
         <TaskMeta task={task} />
         <p className="solve-hint">
-          {task.taskType === "programming"
-            ? "Задача опубликована для самостоятельной практики без встроенного judge."
-            : task.taskType === "single_choice"
+          {task.taskType === "single_choice"
             ? "В этой задаче один правильный вариант."
             : "Выберите все подходящие варианты."}
         </p>
@@ -229,14 +232,7 @@ export function TaskSolvePage() {
           </div>
         )}
 
-        {task.taskType === "programming" ? (
-          <section className="answer-form programming-task" aria-label="Материалы задачи">
-            {task.tags.length > 0 && <div className="tag-list">{task.tags.map((tag) => <span className="status-tag" key={tag}>{tag}</span>)}</div>}
-            {task.examples.length > 0 && <div className="example-list">{task.examples.map((example, index) => <article className="panel" key={`${example.input}-${index}`}><strong>Пример {index + 1}</strong><pre>Input: {example.input}{"\n"}Output: {example.output}</pre>{example.explanation && <p>{example.explanation}</p>}</article>)}</div>}
-            {task.constraints.length > 0 && <div><strong>Ограничения</strong><ul>{task.constraints.map((constraint) => <li key={constraint}>{constraint}</li>)}</ul></div>}
-            {task.source && <a className="button button--ghost" href={task.source.sourceUrl} target="_blank" rel="noreferrer">Открыть оригинал ↗</a>}
-          </section>
-        ) : <form className="answer-form" onSubmit={(event) => void handleSubmit(event)}>
+        <form className="answer-form" onSubmit={(event) => void handleSubmit(event)}>
           <div className="answer-list">
             {task.options.map((option, index) => {
               const isSelected = selected.includes(option.id);
@@ -275,7 +271,7 @@ export function TaskSolvePage() {
             )}
             <span>Версия {task.versionNumber}</span>
           </div>
-        </form>}
+        </form>
       </section>
     </main>
   );

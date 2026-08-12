@@ -4,6 +4,19 @@ export type ITTaskStatus = "draft" | "published" | "archived";
 export type ITTaskType = "single_choice" | "multiple_choice" | "programming";
 export type ITTaskDifficulty = "easy" | "medium" | "hard";
 export type ITSubmissionVerdict = "accepted" | "wrong_answer";
+export type ITProgrammingLanguage = "python" | "go";
+export type ITCodeSubmissionStatus = "queued" | "completed";
+export type ITExecutionVerdict =
+  | "accepted"
+  | "wrong_answer"
+  | "compilation_error"
+  | "runtime_error"
+  | "time_limit_exceeded"
+  | "memory_limit_exceeded"
+  | "output_limit_exceeded"
+  | "checker_error"
+  | "infrastructure_error"
+  | "cancelled";
 
 export interface ITTaskOption {
   id: string;
@@ -69,6 +82,45 @@ export interface ITSubmission {
   createdAt: string;
 }
 
+export interface ITExecutionPhaseResult {
+  exitCode?: number | null;
+  stdout: string;
+  stderr: string;
+  durationMs: number;
+  memoryBytes: number;
+}
+
+export interface ITExecutionTestResult extends ITExecutionPhaseResult {
+  testId: string;
+  verdict: ITExecutionVerdict;
+}
+
+export interface ITExecutionFailure {
+  code: string;
+  message: string;
+}
+
+export interface ITCodeSubmission {
+  id: string;
+  userId: string;
+  taskId: string;
+  taskVersionId: string;
+  taskVersionNumber: number;
+  executionId: string;
+  correlationId: string;
+  language: ITProgrammingLanguage;
+  sourceFileName: string;
+  status: ITCodeSubmissionStatus;
+  verdict?: ITExecutionVerdict | null;
+  compilation?: ITExecutionPhaseResult | null;
+  execution?: ITExecutionPhaseResult | null;
+  tests: ITExecutionTestResult[];
+  failure?: ITExecutionFailure | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string | null;
+}
+
 export interface ITTaskFilter {
   taskType?: ITTaskType;
   difficulty?: ITTaskDifficulty;
@@ -98,6 +150,13 @@ export interface ITSubmissionInput {
   taskVersionId: string;
   idempotencyKey: string;
   selectedOptionIds: string[];
+}
+
+export interface ITCodeSubmissionInput {
+  taskVersionId: string;
+  idempotencyKey: string;
+  language: ITProgrammingLanguage;
+  file: File;
 }
 
 const TASK_SUMMARY_FIELDS = gql`
@@ -156,6 +215,51 @@ const SUBMISSION_FIELDS = gql`
     latestTaskVersionId
     latestVersionNumber
     createdAt
+  }
+`;
+
+const CODE_SUBMISSION_FIELDS = gql`
+  fragment ITCodeSubmissionFields on ITCodeSubmission {
+    id
+    userId
+    taskId
+    taskVersionId
+    taskVersionNumber
+    executionId
+    correlationId
+    language
+    sourceFileName
+    status
+    verdict
+    compilation {
+      exitCode
+      stdout
+      stderr
+      durationMs
+      memoryBytes
+    }
+    execution {
+      exitCode
+      stdout
+      stderr
+      durationMs
+      memoryBytes
+    }
+    tests {
+      testId
+      verdict
+      stdout
+      stderr
+      durationMs
+      memoryBytes
+    }
+    failure {
+      code
+      message
+    }
+    createdAt
+    updatedAt
+    completedAt
   }
 `;
 
@@ -222,6 +326,28 @@ export const MY_IT_SUBMISSIONS_QUERY = gql`
   ${SUBMISSION_FIELDS}
 `;
 
+export const IT_CODE_SUBMISSION_QUERY = gql`
+  query ITCodeSubmission($id: ID!) {
+    itCodeSubmission(id: $id) {
+      ...ITCodeSubmissionFields
+    }
+  }
+  ${CODE_SUBMISSION_FIELDS}
+`;
+
+export const MY_IT_CODE_SUBMISSIONS_QUERY = gql`
+  query MyITCodeSubmissions($taskId: ID, $pagination: PaginationInput) {
+    myITCodeSubmissions(taskId: $taskId, pagination: $pagination) {
+      items {
+        ...ITCodeSubmissionFields
+      }
+      limit
+      offset
+    }
+  }
+  ${CODE_SUBMISSION_FIELDS}
+`;
+
 export const CREATE_IT_TASK = gql`
   mutation CreateITTask($input: ITTaskInput!) {
     createITTask(input: $input) { ...ITTaskFields }
@@ -254,4 +380,13 @@ export const SUBMIT_IT_TASK_ANSWER = gql`
     submitITTaskAnswer(taskId: $taskId, input: $input) { ...ITSubmissionFields }
   }
   ${SUBMISSION_FIELDS}
+`;
+
+export const SUBMIT_IT_TASK_CODE = gql`
+  mutation SubmitITTaskCode($taskId: ID!, $input: ITCodeSubmissionInput!) {
+    submitITTaskCode(taskId: $taskId, input: $input) {
+      ...ITCodeSubmissionFields
+    }
+  }
+  ${CODE_SUBMISSION_FIELDS}
 `;

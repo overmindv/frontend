@@ -1,11 +1,11 @@
 import {
   ApolloClient,
   ApolloLink,
-  HttpLink,
   InMemoryCache,
   from,
 } from "@apollo/client";
 import { onError } from "@apollo/client/link/error";
+import createUploadLink from "apollo-upload-client/createUploadLink.mjs";
 
 export const TOKEN_STORAGE_KEY = "frontend.token";
 export const USER_ID_STORAGE_KEY = "frontend.userId";
@@ -50,12 +50,12 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
   }
 });
 
-const httpLink = new HttpLink({
+const uploadLink = createUploadLink({
   uri: import.meta.env.VITE_API_URL ?? "http://localhost:8081/graphql",
 });
 
 export const apolloClient = new ApolloClient({
-  link: from([errorLink, authLink, httpLink]),
+  link: from([errorLink, authLink, uploadLink]),
   cache: new InMemoryCache({
     typePolicies: {
       User: { keyFields: ["id"] },
@@ -66,6 +66,7 @@ export const apolloClient = new ApolloClient({
       ITTask: { keyFields: ["id"] },
       ITTaskSummary: { keyFields: ["id"] },
       ITSubmission: { keyFields: ["id"] },
+      ITCodeSubmission: { keyFields: ["id"] },
     },
   }),
   connectToDevTools: import.meta.env.DEV,

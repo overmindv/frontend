@@ -4,7 +4,11 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
 import { TOKEN_STORAGE_KEY, USER_ID_STORAGE_KEY } from "../../api/client";
-import { IT_TASK_QUERY, SUBMIT_IT_TASK_ANSWER } from "../../api/tasks";
+import {
+  IT_TASK_QUERY,
+  SUBMIT_IT_TASK_ANSWER,
+  SUBMIT_IT_TASK_CODE,
+} from "../../api/tasks";
 import { AuthProvider } from "../../context/AuthContext";
 import { TaskSolvePage } from "./TasksPages";
 
@@ -96,36 +100,91 @@ test("пользователь решает открытую версию тес
   expect(screen.getByText("Тест был обновлён")).toBeInTheDocument();
 });
 
-// TestProgrammingTaskIsReadOnly проверяет публичный режим без формы отправки ответа.
-test("programming-задача показывает материалы без формы ответа", async () => {
+// TestProgrammingTaskUpload проверяет выбор файла и отображение результата sandbox.
+test("пользователь отправляет файл programming-задачи", async () => {
+  localStorage.setItem(TOKEN_STORAGE_KEY, "token");
+  localStorage.setItem(USER_ID_STORAGE_KEY, "user-id");
+  vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("22222222-2222-4222-8222-222222222222");
+
+  const user = userEvent.setup();
+  const sourceFile = new File(["print(4)"], "solution.py", {
+    type: "text/x-python",
+  });
+
   render(
     <MockedProvider
       addTypename={false}
-      mocks={[{
-        request: { query: IT_TASK_QUERY, variables: { id: "programming-id" } },
-        result: {
-          data: {
-            itTask: {
-              ...task,
-              id: "programming-id",
-              taskVersionId: "programming-version-id",
-              title: "Калькулятор",
-              statement: "Вычислите значение выражения",
-              taskType: "programming",
-              options: [],
-              tags: ["math"],
-              examples: [{ input: "2 + 2", output: "4", explanation: "Сложение" }],
-              constraints: ["Ввод корректен"],
-              source: {
-                sourceId: "coderun",
-                sourceName: "CodeRun",
-                sourceUrl: "https://coderun.yandex.ru/problem/calculator",
-                publishedAt: null,
+      mocks={[
+        {
+          request: { query: IT_TASK_QUERY, variables: { id: "programming-id" } },
+          result: {
+            data: {
+              itTask: {
+                ...task,
+                id: "programming-id",
+                taskVersionId: "programming-version-id",
+                title: "Калькулятор",
+                statement: "Вычислите значение выражения",
+                taskType: "programming",
+                options: [],
+                tags: ["math"],
+                examples: [{ input: "2 + 2", output: "4", explanation: "Сложение" }],
+                constraints: ["Ввод корректен"],
+                source: {
+                  sourceId: "coderun",
+                  sourceName: "CodeRun",
+                  sourceUrl: "https://coderun.yandex.ru/problem/calculator",
+                  publishedAt: null,
+                },
               },
             },
           },
         },
-      }]}
+        {
+          request: {
+            query: SUBMIT_IT_TASK_CODE,
+            variables: {
+              taskId: "programming-id",
+              input: {
+                taskVersionId: "programming-version-id",
+                idempotencyKey: "22222222-2222-4222-8222-222222222222",
+                language: "python",
+                file: sourceFile,
+              },
+            },
+          },
+          result: {
+            data: {
+              submitITTaskCode: {
+                id: "code-submission-id",
+                userId: "user-id",
+                taskId: "programming-id",
+                taskVersionId: "programming-version-id",
+                taskVersionNumber: 1,
+                executionId: "execution-id",
+                correlationId: "correlation-id",
+                language: "python",
+                sourceFileName: "solution.py",
+                status: "completed",
+                verdict: "accepted",
+                compilation: null,
+                execution: {
+                  exitCode: 0,
+                  stdout: "4\n",
+                  stderr: "",
+                  durationMs: 7,
+                  memoryBytes: 1024,
+                },
+                tests: [],
+                failure: null,
+                createdAt: "2026-08-13T10:00:00Z",
+                updatedAt: "2026-08-13T10:00:01Z",
+                completedAt: "2026-08-13T10:00:01Z",
+              },
+            },
+          },
+        },
+      ]}
     >
       <MemoryRouter initialEntries={["/tasks/programming-id"]}>
         <AuthProvider>
@@ -144,5 +203,12 @@ test("programming-задача показывает материалы без ф
     "href",
     "https://coderun.yandex.ru/problem/calculator",
   );
-  expect(screen.queryByRole("button", { name: "Проверить ответ" })).not.toBeInTheDocument();
+
+  await user.upload(screen.getByLabelText(/Выберите файл решения/), sourceFile);
+
+  expect(screen.getByText(/готов к отправке/)).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Отправить на проверку" }));
+
+  expect(await screen.findByRole("heading", { name: "Решение принято" })).toBeInTheDocument();
+  expect(screen.getByText("7 мс")).toBeInTheDocument();
 });
