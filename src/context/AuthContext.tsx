@@ -86,7 +86,7 @@ function isAdminToken(token: string | null) {
     const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
     const decoded = JSON.parse(window.atob(padded)) as { roles?: string[] };
 
-    return decoded.roles?.some((role) => role.toLowerCase() === "admin") ?? false;
+    return decoded.roles?.some((role) => ["admin", "superuser"].includes(role.toLowerCase())) ?? false;
   } catch {
     return false;
   }
