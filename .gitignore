@@ -4,3 +4,5 @@ dist/
 .env
 coverage/
 .code-review-graph/
+.codegraph/
+.claude/
