@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@apollo/client";
-import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { RotateCcw, Search, SlidersHorizontal } from "lucide-react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import type { Topic } from "../../api/catalog";
 import { getErrorMessage } from "../../api/errors";
 import {
@@ -27,10 +28,12 @@ const pageSize = 12;
 
 // TasksPage показывает опубликованные IT-задачи и явные фильтры.
 export function TasksPage() {
+  const [searchParams] = useSearchParams();
   const [offset, setOffset] = useState(0);
   const [taskType, setTaskType] = useState<ITTaskType | "">("");
   const [difficulty, setDifficulty] = useState<ITTaskDifficulty | "">("");
   const [topicId, setTopicId] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
   const topics = useQuery<{ topics: Topic[] }>(IT_TASK_TOPICS_QUERY);
   const filter: ITTaskFilter = {
     ...(taskType ? { taskType } : {}),
@@ -45,22 +48,22 @@ export function TasksPage() {
     fetchPolicy: "cache-and-network",
   });
   const items = data?.itTasks.items ?? [];
+  const visibleItems = useMemo(() => items.filter((task) => task.title.toLocaleLowerCase("ru").includes(search.trim().toLocaleLowerCase("ru"))), [items, search]);
+
+  const resetFilters = () => {
+    setTaskType("");
+    setDifficulty("");
+    setTopicId("");
+    setSearch("");
+    setOffset(0);
+  };
 
   return (
     <main className="page-shell tasks-page">
-      <section className="tasks-hero">
-        <div>
-          <span className="eyebrow">IT practice</span>
-          <h1>Проверяйте знания<br />короткими подходами.</h1>
-        </div>
-        <p>
-          Тесты по программированию без лишнего шума. Выберите тему, решите задачу и сразу
-          получите разбор результата.
-        </p>
-      </section>
-
-      <section className="task-toolbar" aria-label="Фильтры задач">
-        <FilterSelect
+      <header className="page-heading"><div><span className="section-kicker">Практика</span><h1>Задачи</h1><p>Выберите задачу и отправьте решение</p></div><SlidersHorizontal size={28} /></header>
+      <label className="task-search"><Search size={19} /><input aria-label="Поиск задач" onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по названиям на этой странице" value={search} /><span>Локальный поиск</span></label>
+      <div className="task-browser">
+      <aside className="task-filters" aria-label="Фильтры задач"><div className="task-filters__heading"><strong>Фильтры</strong><button className="text-button" onClick={resetFilters} type="button"><RotateCcw size={14} /> Сбросить</button></div><FilterSelect
           label="Формат"
           value={taskType}
           onChange={(value) => {
@@ -100,20 +103,18 @@ export function TasksPage() {
             ...(topics.data?.topics.map((topic) => [topic.id, topic.title] as [string, string]) ?? []),
           ]}
         />
-        <div className="task-toolbar__count">
-          <span>На странице</span>
-          <strong>{items.length.toString().padStart(2, "0")}</strong>
-        </div>
-      </section>
-
+        <label className="filter-select is-disabled"><span>Теги</span><input disabled placeholder="После подключения API" /></label>
+        <div className="task-filter-note">Фильтры применяются сервером. Поиск по названию — среди текущей страницы.</div>
+      </aside>
+      <section className="task-results"><div className="task-results__heading"><div><span className="section-kicker">Список</span><h2>Доступные задачи</h2></div><strong>{visibleItems.length}</strong></div>
       {(error || topics.error) && <ErrorMessage message={getErrorMessage(error ?? topics.error)} />}
       {loading && !data ? (
         <div className="panel panel--center"><Spinner label="Загружаем задачи…" /></div>
-      ) : items.length === 0 ? (
+      ) : visibleItems.length === 0 ? (
         <EmptyState title="Задач пока нет" text="Попробуйте изменить фильтры или вернитесь позже." />
       ) : (
         <section className="task-grid" aria-label="Список задач">
-          {items.map((task, index) => (
+          {visibleItems.map((task, index) => (
             <TaskCard key={task.id} task={task} index={offset + index + 1} topics={topics.data?.topics ?? []} />
           ))}
         </section>
@@ -124,6 +125,7 @@ export function TasksPage() {
         hasNext={items.length === pageSize}
         onChange={setOffset}
       />
+      </section></div>
     </main>
   );
 }
@@ -372,7 +374,7 @@ function TaskCard({ task, index, topics }: { task: ITTaskList["items"][number]; 
   const topic = topics.find((item) => item.id === task.topicId);
 
   return (
-    <article className="task-card">
+    <Link aria-label={`Открыть задачу ${task.title}`} className="task-card" to={`/tasks/${task.id}`}>
       <div className="task-card__number">{index.toString().padStart(2, "0")}</div>
       <div className="task-card__body">
         <div className="task-card__meta">
@@ -382,10 +384,8 @@ function TaskCard({ task, index, topics }: { task: ITTaskList["items"][number]; 
         <h2>{task.title}</h2>
         <p>{topic?.title ?? "Общая практика"}</p>
       </div>
-      <Link aria-label={`Открыть задачу ${task.title}`} className="task-card__link" to={`/tasks/${task.id}`}>
-        <span>Решить</span><b>↗</b>
-      </Link>
-    </article>
+      <span className="task-card__arrow" aria-hidden="true">↗</span>
+    </Link>
   );
 }
 

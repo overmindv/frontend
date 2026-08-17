@@ -61,6 +61,7 @@ export interface TaskCandidateReviewInput {
 export interface TaskCollectionJob {
   id: string;
   trigger: string;
+  requestedBy?: string | null;
   status: TaskCollectionJobStatus;
   collectedTotal: number;
   importedTotal: number;
@@ -84,7 +85,7 @@ const CANDIDATE_FIELDS = gql`
 
 const JOB_FIELDS = gql`
   fragment TaskCollectionJobFields on TaskCollectionJob {
-    id trigger status collectedTotal importedTotal duplicatesTotal invalidTotal errorCount errorMessage
+    id trigger requestedBy status collectedTotal importedTotal duplicatesTotal invalidTotal errorCount errorMessage
     notificationAcknowledged createdAt finishedAt
   }
 `;
