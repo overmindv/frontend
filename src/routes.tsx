@@ -2,22 +2,28 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { PublicOnlyRoute } from "./components/PublicOnlyRoute";
 import { LoginPage } from "./pages/LoginPage";
-import { ProfilePage } from "./pages/ProfilePage";
+import { ProfilePage, ProfileSettingsPage, PublicUserProfilePage } from "./pages/ProfilePage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { CourseFormPage, CoursesPage, ProgramFormPage, ProgramsPage, TopicFormPage, TopicsPage, UniversitiesPage, UniversityFormPage } from "./pages/admin/CatalogPages";
 import { AdminTaskFormPage, AdminTasksPage } from "./pages/admin/TasksAdminPages";
 import { AdminUsersPage } from "./pages/admin/UsersPage";
 import { CandidateEditorPage, CollectedTasksPage } from "./pages/admin/CollectedTasksPage";
 import { SubmissionDetailPage, SubmissionHistoryPage, TaskSolvePage, TasksPage } from "./pages/tasks/TasksPages";
-
-function HomeRedirect() {
-  return <Navigate to="/tasks" replace />;
-}
+import { HomePage } from "./pages/HomePage";
+import { CatalogBrowsePage, CatalogDetailPage } from "./pages/CatalogBrowsePage";
 
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<HomeRedirect />} />
+      <Route path="/" element={<HomePage />} />
+      <Route path="/universities" element={<CatalogBrowsePage kind="universities" />} />
+      <Route path="/universities/:id" element={<CatalogDetailPage kind="universities" />} />
+      <Route path="/programs" element={<CatalogBrowsePage kind="programs" />} />
+      <Route path="/programs/:id" element={<CatalogDetailPage kind="programs" />} />
+      <Route path="/courses" element={<CatalogBrowsePage kind="courses" />} />
+      <Route path="/courses/:id" element={<CatalogDetailPage kind="courses" />} />
+      <Route path="/topics" element={<CatalogBrowsePage kind="topics" />} />
+      <Route path="/topics/:id" element={<CatalogDetailPage kind="topics" />} />
       <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
       <Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
       <Route path="/tasks" element={<TasksPage />} />
@@ -25,6 +31,8 @@ export function AppRoutes() {
       <Route path="/history" element={<PrivateRoute><SubmissionHistoryPage /></PrivateRoute>} />
       <Route path="/history/:id" element={<PrivateRoute><SubmissionDetailPage /></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
+      <Route path="/profile/settings" element={<PrivateRoute><ProfileSettingsPage /></PrivateRoute>} />
+      <Route path="/users/:id" element={<PrivateRoute><PublicUserProfilePage /></PrivateRoute>} />
       <Route path="/admin/tasks" element={<PrivateRoute><AdminTasksPage /></PrivateRoute>} />
       <Route path="/admin/tasks/new" element={<PrivateRoute><AdminTaskFormPage create /></PrivateRoute>} />
       <Route path="/admin/tasks/:id" element={<PrivateRoute><AdminTaskFormPage /></PrivateRoute>} />
@@ -46,7 +54,7 @@ export function AppRoutes() {
       <Route path="/admin/catalog/topics" element={<PrivateRoute><TopicsPage /></PrivateRoute>} />
       <Route path="/admin/catalog/topics/new" element={<PrivateRoute><TopicFormPage create /></PrivateRoute>} />
       <Route path="/admin/catalog/topics/:id" element={<PrivateRoute><TopicFormPage /></PrivateRoute>} />
-      <Route path="*" element={<HomeRedirect />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

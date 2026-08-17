@@ -753,22 +753,31 @@ function RelationSelect({
   value?: string;
   onChange?: (value: string) => void;
 }) {
+  const initialID = value ?? defaultValue ?? "";
+  const [internalID, setInternalID] = useState(initialID);
+  const selectedID = value === undefined ? internalID : value;
+  const selectedItem = items.find((item) => item.id === selectedID);
+  const [query, setQuery] = useState(selectedItem?.label ?? "");
+
+  useEffect(() => {
+    const match = items.find((item) => item.id === selectedID);
+    if (match) setQuery(match.label);
+    else if (!selectedID) setQuery("");
+  }, [items, selectedID]);
+
+  const setSelected = (nextID: string) => {
+    if (onChange) onChange(nextID);
+    else setInternalID(nextID);
+  };
+  const createPath = label.includes("Университет") ? "/admin/catalog/universities/new" : label.includes("Программ") ? "/admin/catalog/programs/new" : label.includes("Курс") ? "/admin/catalog/courses/new" : label.includes("тем") || label.includes("Тем") ? "/admin/catalog/topics/new" : "";
+
   return (
     <label className="field">
       <span>{label}</span>
-      <select
-        name={name}
-        defaultValue={value === undefined ? defaultValue : undefined}
-        value={value}
-        onChange={onChange ? (event) => onChange(event.target.value) : undefined}
-      >
-        <option value="">{emptyLabel}</option>
-        {items.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.label}
-          </option>
-        ))}
-      </select>
+      <input name={name} type="hidden" value={selectedID} />
+      <input list={`${name}-suggestions`} onChange={(event) => { const nextQuery = event.target.value; setQuery(nextQuery); const match = items.find((item) => item.label === nextQuery); setSelected(match?.id ?? ""); }} placeholder={emptyLabel} value={query} />
+      <datalist id={`${name}-suggestions`}>{items.map((item) => <option key={item.id} value={item.label} />)}</datalist>
+      {query.trim() && !items.some((item) => item.label.toLocaleLowerCase("ru") === query.trim().toLocaleLowerCase("ru")) && createPath && <small>Совпадений нет. <Link className="text-link" to={createPath}>Создать новый элемент</Link></small>}
     </label>
   );
 }
