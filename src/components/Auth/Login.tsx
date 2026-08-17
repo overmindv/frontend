@@ -40,9 +40,7 @@ export function Login() {
   return (
     <form className="form" onSubmit={handleSubmit}>
       <div className="form__heading">
-        <span className="eyebrow">С возвращением</span>
         <h1>Вход в аккаунт</h1>
-        <p>Введите почту и пароль, указанные при регистрации.</p>
       </div>
 
       <ErrorMessage message={errorMessage} />

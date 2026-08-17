@@ -61,9 +61,7 @@ export function Register() {
   return (
     <form className="form form--wide" onSubmit={handleSubmit}>
       <div className="form__heading">
-        <span className="eyebrow">Новый профиль</span>
         <h1>Регистрация</h1>
-        <p>Создайте аккаунт — после регистрации вы сразу войдёте в систему.</p>
       </div>
 
       <ErrorMessage message={errorMessage} />
