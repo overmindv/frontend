@@ -5,6 +5,7 @@ import {
   useState,
   type ChangeEvent,
   type FormEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import { Link } from "react-router-dom";
 import { getErrorMessage } from "../../api/errors";
@@ -37,6 +38,9 @@ export function ProgrammingTaskSolve({ task, isAuthenticated }: ProgrammingTaskS
   const [submission, setSubmission] = useState<ITCodeSubmission | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const idempotencyKey = useRef<string | null>(null);
+  const splitContainer = useRef<HTMLDivElement>(null);
+  const [split, setSplit] = useState(() => Number(localStorage.getItem("overmindv-solve-split")) || 50);
+  const [draftCode, setDraftCode] = useState("");
 
   const [submitCode, submitState] = useMutation<
     { submitITTaskCode: ITCodeSubmission },
@@ -149,6 +153,28 @@ export function ProgrammingTaskSolve({ task, isAuthenticated }: ProgrammingTaskS
   const requestError =
     submitState.error ?? (submission?.status === "queued" ? resultState.error : undefined);
 
+  // updateSplit изменяет ширину условия и сохраняет её для следующих задач.
+  const updateSplit = (next: number) => {
+    const value = Math.min(70, Math.max(30, next));
+    setSplit(value);
+    localStorage.setItem("overmindv-solve-split", String(value));
+  };
+
+  // startResize отслеживает горизонтальное перемещение разделителя до отпускания указателя.
+  const startResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    const move = (moveEvent: PointerEvent) => {
+      const rect = splitContainer.current?.getBoundingClientRect();
+      if (rect) updateSplit(((moveEvent.clientX - rect.left) / rect.width) * 100);
+    };
+    const stop = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop);
+  };
+
   return (
     <main className="page-shell programming-solve-page">
       <div className="programming-solve-nav">
@@ -159,7 +185,7 @@ export function ProgrammingTaskSolve({ task, isAuthenticated }: ProgrammingTaskS
         <span>Версия {task.versionNumber}</span>
       </div>
 
-      <div className="programming-solve-layout">
+      <div className="programming-solve-layout" ref={splitContainer} style={{ gridTemplateColumns: `minmax(0, ${split}fr) 10px minmax(0, ${100 - split}fr)` }}>
         <article className="programming-statement">
           <header>
             <span className="eyebrow">Задача по программированию</span>
@@ -192,15 +218,19 @@ export function ProgrammingTaskSolve({ task, isAuthenticated }: ProgrammingTaskS
           )}
         </article>
 
+        <button className="solve-resizer" aria-label="Изменить ширину панелей" aria-valuemin={30} aria-valuemax={70} aria-valuenow={Math.round(split)} onPointerDown={startResize} onKeyDown={(event) => { if (event.key === "ArrowLeft") updateSplit(split - 2); if (event.key === "ArrowRight") updateSplit(split + 2); }} role="separator" type="button"><span /></button>
+
         <aside className="programming-workspace" aria-label="Отправка решения">
           <header>
             <div>
               <span className="eyebrow">Решение</span>
-              <h2>Загрузите исходный файл</h2>
+              <h2>Решение</h2>
             </div>
 
             <span className="programming-workspace__mode">FILE MODE</span>
           </header>
+
+          <div className="code-editor-stub"><div className="code-editor-stub__bar"><span>{language === "python" ? "solution.py" : "solution.go"}</span><small>Черновик не отправляется</small></div><div className="code-editor-stub__body"><span aria-hidden="true">1<br />2<br />3<br />4<br />5<br />6<br />7<br />8<br />9<br />10</span><textarea aria-label="Черновик решения" onChange={(event) => setDraftCode(event.target.value)} placeholder={language === "python" ? "# Напишите решение здесь\n# Отправка пока доступна только файлом" : "// Напишите решение здесь\n// Отправка пока доступна только файлом"} spellCheck={false} value={draftCode} /></div></div>
 
           <form className="code-upload-form" onSubmit={(event) => void handleSubmit(event)}>
             <label className="field">

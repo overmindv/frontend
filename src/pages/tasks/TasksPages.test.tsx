@@ -6,11 +6,13 @@ import { vi } from "vitest";
 import { TOKEN_STORAGE_KEY, USER_ID_STORAGE_KEY } from "../../api/client";
 import {
   IT_TASK_QUERY,
+  IT_TASK_TOPICS_QUERY,
+  IT_TASKS_QUERY,
   SUBMIT_IT_TASK_ANSWER,
   SUBMIT_IT_TASK_CODE,
 } from "../../api/tasks";
 import { AuthProvider } from "../../context/AuthContext";
-import { TaskSolvePage } from "./TasksPages";
+import { TaskSolvePage, TasksPage } from "./TasksPages";
 
 const task = {
   __typename: "ITTask",
@@ -197,6 +199,13 @@ test("пользователь отправляет файл programming-зад�
   );
 
   expect(await screen.findByRole("heading", { name: "Калькулятор" })).toBeInTheDocument();
+  const editor = screen.getByRole("textbox", { name: "Черновик решения" });
+  await user.type(editor, "print(4)");
+  expect(editor).toHaveValue("print(4)");
+  const separator = screen.getByRole("separator", { name: "Изменить ширину панелей" });
+  separator.focus();
+  await user.keyboard("{ArrowRight}");
+  expect(localStorage.getItem("overmindv-solve-split")).toBe("52");
   expect(screen.getByText("math")).toBeInTheDocument();
   expect(screen.getByText("Ввод корректен")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: /Открыть оригинал/ })).toHaveAttribute(
@@ -211,4 +220,15 @@ test("пользователь отправляет файл programming-зад�
 
   expect(await screen.findByRole("heading", { name: "Решение принято" })).toBeInTheDocument();
   expect(screen.getByText("7 мс")).toBeInTheDocument();
+});
+
+test("карточка задачи целиком ведёт на страницу задачи", async () => {
+  render(<MockedProvider mocks={[
+    { request: { query: IT_TASK_TOPICS_QUERY }, result: { data: { topics: [] } } },
+    { request: { query: IT_TASKS_QUERY, variables: { filter: {}, pagination: { limit: 12, offset: 0 } } }, result: { data: { itTasks: { __typename: "ITTaskList", items: [{ __typename: "ITTaskSummary", id: "task-id", status: "published", taskVersionId: "version-id", versionNumber: 1, topicId: null, title: "Интерфейсы Go", taskType: "single_choice", difficulty: "easy", createdAt: "2026-08-03T10:00:00Z", updatedAt: "2026-08-03T10:00:00Z" }], limit: 12, offset: 0 } } } },
+  ]}><MemoryRouter><TasksPage /></MemoryRouter></MockedProvider>);
+
+  const card = await screen.findByRole("link", { name: "Открыть задачу Интерфейсы Go" });
+  expect(card).toHaveAttribute("href", "/tasks/task-id");
+  expect(screen.queryByText("Решить")).not.toBeInTheDocument();
 });

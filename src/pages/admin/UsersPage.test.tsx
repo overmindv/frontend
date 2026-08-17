@@ -42,13 +42,14 @@ test("администратор назначает обычного польз�
   localStorage.setItem(TOKEN_STORAGE_KEY, adminToken());
   localStorage.setItem(USER_ID_STORAGE_KEY, "admin-id");
   const user = userEvent.setup();
+  vi.spyOn(window, "confirm").mockReturnValue(true);
 
   render(
     <MockedProvider
       addTypename={false}
       mocks={[
         {
-          request: { query: ADMIN_USERS_QUERY, variables: { search: "" } },
+          request: { query: ADMIN_USERS_QUERY, variables: { search: "student" } },
           result: { data: { users: [student] } },
         },
         {
@@ -68,7 +69,7 @@ test("администратор назначает обычного польз�
           },
         },
         {
-          request: { query: ADMIN_USERS_QUERY, variables: { search: "" } },
+          request: { query: ADMIN_USERS_QUERY, variables: { search: "student" } },
           result: {
             data: {
               users: [
@@ -92,8 +93,11 @@ test("администратор назначает обычного польз�
     </MockedProvider>,
   );
 
-  expect(await screen.findByText("student")).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "Сделать admin" }));
+  await user.type(screen.getByRole("textbox", { name: "Username или email" }), "student");
+  await user.click(screen.getByRole("button", { name: "Найти пользователя" }));
+  expect(await screen.findByText("@student")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Действия с пользователем" }));
+  await user.click(screen.getByRole("button", { name: "Назначить администратором" }));
 
   expect(await screen.findByText("Администратор")).toBeInTheDocument();
 });
