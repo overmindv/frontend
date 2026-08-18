@@ -1,12 +1,15 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { GET_USER_QUERY } from "../../api/queries";
-import { UPDATE_USER_MUTATION } from "../../api/mutations";
+import { SET_MY_AVATAR_MUTATION, UPDATE_USER_MUTATION } from "../../api/mutations";
+import { uploadAvatar } from "../../api/media";
 import { getErrorMessage } from "../../api/errors";
 import type { UpdateUserInput, User } from "../../api/types";
 import { useAuth } from "../../context/AuthContext";
 import { ErrorMessage } from "../common/ErrorMessage";
 import { Spinner } from "../common/Spinner";
+import { AvatarCropper } from "./AvatarCropper";
+import { AvatarImage } from "./AvatarImage";
 
 interface GetUserData {
   getUser: User;
@@ -47,7 +50,10 @@ export function Profile() {
   const [form, setForm] = useState<ProfileForm>(emptyForm);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const { data, loading, error } = useQuery<GetUserData, { id: string }>(
+  const [avatarBlob, setAvatarBlob] = useState<Blob | null>(null);
+  const [avatarProcessing, setAvatarProcessing] = useState(false);
+  const [avatarSaving, setAvatarSaving] = useState(false);
+  const { data, loading, error, refetch } = useQuery<GetUserData, { id: string }>(
     GET_USER_QUERY,
     {
       variables: { id: userId ?? "" },
@@ -59,6 +65,7 @@ export function Profile() {
     UpdateUserData,
     { id: string; input: UpdateUserInput }
   >(UPDATE_USER_MUTATION);
+  const [setAvatar] = useMutation(SET_MY_AVATAR_MUTATION);
 
   const user = data?.getUser;
 
@@ -89,18 +96,45 @@ export function Profile() {
       else input.clearBirthDate = true;
     }
 
-    if (Object.keys(input).length === 0) {
+    const hasProfileChanges = Object.keys(input).length > 0;
+    if (!hasProfileChanges && !avatarBlob) {
       setSuccessMessage("Изменений нет.");
+
       return;
     }
 
+    setAvatarSaving(Boolean(avatarBlob));
     try {
-      const result = await updateUser({ variables: { id: userId, input } });
-      if (!result.data?.updateUser) throw new Error("Сервер вернул пустой ответ.");
-      setForm(userToForm(result.data.updateUser));
-      setSuccessMessage("Профиль сохранён.");
+      if (hasProfileChanges) {
+        const result = await updateUser({ variables: { id: userId, input } });
+        if (!result.data?.updateUser) throw new Error("Сервер вернул пустой ответ.");
+        setForm(userToForm(result.data.updateUser));
+      }
+      if (avatarBlob) {
+        await uploadAvatar(avatarBlob);
+        setAvatarBlob(null);
+        await refetch();
+      }
+
+      setSuccessMessage(hasProfileChanges && avatarBlob ? "Профиль и фото сохранены." : avatarBlob ? "Фото профиля обновлено." : "Профиль сохранён.");
     } catch (mutationError) {
       setErrorMessage(getErrorMessage(mutationError));
+    } finally {
+      setAvatarSaving(false);
+    }
+  };
+
+  const removeAvatar = async () => {
+    setAvatarSaving(true);
+    setErrorMessage(null);
+    try {
+      await setAvatar({ variables: { fileId: null } });
+      await refetch();
+      setSuccessMessage("Фото профиля удалено.");
+    } catch (avatarError) {
+      setErrorMessage(getErrorMessage(avatarError));
+    } finally {
+      setAvatarSaving(false);
     }
   };
 
@@ -117,9 +151,7 @@ export function Profile() {
   return (
     <section className="profile-layout">
       <aside className="profile-summary">
-        <div className="avatar" aria-hidden="true">
-          {(user.firstName || user.username).slice(0, 1).toUpperCase()}
-        </div>
+        <div className="avatar"><AvatarImage avatar={user.avatar} label={user.firstName || user.username} size={74} /></div>
         <div>
           <span className="eyebrow">Ваш аккаунт</span>
           <h1>{[user.firstName, user.lastName].filter(Boolean).join(" ") || user.username}</h1>
@@ -169,8 +201,11 @@ export function Profile() {
           </label>
         </div>
 
-        <button className="button button--primary" disabled={saving} type="submit">
-          {saving ? <Spinner label="Сохраняем…" /> : "Сохранить изменения"}
+        <AvatarCropper onChange={setAvatarBlob} onProcessingChange={setAvatarProcessing} />
+        {user.avatar && <div className="avatar-actions"><button className="button button--ghost danger-action" disabled={avatarSaving || avatarProcessing || saving} onClick={() => void removeAvatar()} type="button">Удалить фото</button></div>}
+
+        <button className="button button--primary" disabled={saving || avatarSaving || avatarProcessing} type="submit">
+          {avatarProcessing ? <Spinner label="Готовим фото…" /> : saving || avatarSaving ? <Spinner label="Сохраняем…" /> : "Сохранить изменения"}
         </button>
       </form>
     </section>

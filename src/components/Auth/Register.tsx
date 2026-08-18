@@ -2,11 +2,14 @@ import { useState, type FormEvent } from "react";
 import { useMutation } from "@apollo/client";
 import { Link, useNavigate } from "react-router-dom";
 import { REGISTER_MUTATION } from "../../api/mutations";
+import { clearStoredAuth, storeStoredAuth } from "../../api/client";
 import { getErrorMessage } from "../../api/errors";
+import { uploadAvatar } from "../../api/media";
 import type { AuthPayload, RegisterInput } from "../../api/types";
 import { useAuth } from "../../context/AuthContext";
 import { ErrorMessage } from "../common/ErrorMessage";
 import { Spinner } from "../common/Spinner";
+import { AvatarCropper } from "../Profile/AvatarCropper";
 
 interface RegisterData {
   register: AuthPayload;
@@ -27,6 +30,11 @@ export function Register() {
   const { signIn } = useAuth();
   const [form, setForm] = useState(initialForm);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<Blob | null>(null);
+  const [avatarSelected, setAvatarSelected] = useState(false);
+  const [avatarProcessing, setAvatarProcessing] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [registeredAuth, setRegisteredAuth] = useState<AuthPayload | null>(null);
   const [register, { loading }] = useMutation<
     RegisterData,
     { input: RegisterInput }
@@ -38,20 +46,46 @@ export function Register() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (avatarProcessing || (avatarSelected && !avatar)) {
+      setErrorMessage("Дождитесь завершения обработки фото.");
+
+      return;
+    }
+
     setErrorMessage(null);
-    const input: RegisterInput = {
-      email: form.email.trim(),
-      password: form.password,
-      username: form.username.trim(),
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      phone: form.phone.trim(),
-      ...(form.birthDate ? { birthDate: form.birthDate } : {}),
-    };
     try {
-      const result = await register({ variables: { input } });
-      if (!result.data?.register) throw new Error("Сервер вернул пустой ответ.");
-      signIn(result.data.register);
+      let auth = registeredAuth;
+      if (!auth) {
+        const input: RegisterInput = {
+          email: form.email.trim(),
+          password: form.password,
+          username: form.username.trim(),
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          phone: form.phone.trim(),
+          ...(form.birthDate ? { birthDate: form.birthDate } : {}),
+        };
+        const result = await register({ variables: { input } });
+        if (!result.data?.register) throw new Error("Сервер вернул пустой ответ.");
+        auth = result.data.register;
+        setRegisteredAuth(auth);
+      }
+
+      if (avatar) {
+        // AuthContext остаётся гостевым до конца загрузки, поэтому PublicOnlyRoute не прерывает процесс.
+        storeStoredAuth(auth.token, auth.user.id);
+        setAvatarUploading(true);
+        try {
+          await uploadAvatar(avatar);
+        } catch (error) {
+          clearStoredAuth();
+          throw error;
+        } finally {
+          setAvatarUploading(false);
+        }
+      }
+
+      signIn(auth);
       navigate("/profile", { replace: true });
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
@@ -99,8 +133,10 @@ export function Register() {
         </label>
       </div>
 
-      <button className="button button--primary" disabled={loading} type="submit">
-        {loading ? <Spinner label="Создаём аккаунт…" /> : "Создать аккаунт"}
+      <AvatarCropper onChange={setAvatar} onProcessingChange={setAvatarProcessing} onSelectionChange={setAvatarSelected} />
+
+      <button className="button button--primary" disabled={loading || avatarUploading || avatarProcessing || (avatarSelected && !avatar)} type="submit">
+        {avatarProcessing ? <Spinner label="Готовим фото…" /> : avatarUploading ? <Spinner label="Загружаем фото…" /> : loading ? <Spinner label="Создаём аккаунт…" /> : registeredAuth ? "Повторить загрузку фото" : "Создать аккаунт"}
       </button>
 
       <p className="form__footer">

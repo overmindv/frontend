@@ -14,6 +14,7 @@ import {
   apolloClient,
   clearStoredAuth,
   setUnauthenticatedHandler,
+  storeStoredAuth,
 } from "../api/client";
 import type { AuthPayload } from "../api/types";
 
@@ -54,8 +55,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [logout, token, userId]);
 
   const signIn = useCallback((payload: AuthPayload) => {
-    localStorage.setItem(TOKEN_STORAGE_KEY, payload.token);
-    localStorage.setItem(USER_ID_STORAGE_KEY, payload.user.id);
+    storeStoredAuth(payload.token, payload.user.id);
     setToken(payload.token);
     setUserId(payload.user.id);
   }, []);
