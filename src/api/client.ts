@@ -24,6 +24,12 @@ export function clearStoredAuth() {
   localStorage.removeItem(USER_ID_STORAGE_KEY);
 }
 
+// storeStoredAuth сохраняет проверенные credentials до выполнения авторизованных запросов.
+export function storeStoredAuth(token: string, userID: string) {
+  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  localStorage.setItem(USER_ID_STORAGE_KEY, userID);
+}
+
 const authLink = new ApolloLink((operation, forward) => {
   const token = localStorage.getItem(TOKEN_STORAGE_KEY);
   operation.setContext(({ headers = {} }) => ({

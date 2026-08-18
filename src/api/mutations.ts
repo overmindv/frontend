@@ -9,12 +9,22 @@ export const USER_FIELDS = gql`
     lastName
     birthDate
     phone
+    avatar { fileId smallUrl mediumUrl }
     roles
     isAdmin
     isSuperuser
     createdAt
     updatedAt
   }
+`;
+
+export const SET_MY_AVATAR_MUTATION = gql`
+  mutation SetMyAvatar($fileId: ID) {
+    setMyAvatar(fileId: $fileId) {
+      ...UserFields
+    }
+  }
+  ${USER_FIELDS}
 `;
 
 export const REGISTER_MUTATION = gql`

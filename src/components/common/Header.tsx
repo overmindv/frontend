@@ -29,6 +29,7 @@ export function Header() {
     ["/programs", "Программы", "По названиям программ"],
     ["/courses", "Курсы", "По названиям курсов"],
     ["/topics", "Темы", "По названиям тем"],
+    ...(isAuthenticated ? [["/users", "Пользователи", "По username, имени или фамилии"]] : []),
     ...(isAdmin ? [["/admin/users", "Пользователи", "По username или email"]] : []),
   ];
 
@@ -43,7 +44,7 @@ export function Header() {
         <div className="header-actions">
           <button className="header-icon" onClick={cycleTheme} title={`Тема: ${preference}`} type="button" aria-label="Переключить тему">{resolvedTheme === "dark" ? <Moon size={18} /> : <Sun size={18} />}</button>
           {isAdmin && <div className="header-menu"><button className="header-action" onClick={() => setAdminOpen((value) => !value)} type="button"><Shield size={17} /> Админ <ChevronDown size={14} /></button>{adminOpen && <AdminMenu close={() => setAdminOpen(false)} />}</div>}
-          {isAuthenticated ? <div className="header-menu"><button className="header-icon" onClick={() => setProfileOpen((value) => !value)} aria-label="Меню профиля" type="button"><CircleUserRound size={21} /></button>{profileOpen && <div className="popover-menu popover-menu--right"><Link onClick={() => setProfileOpen(false)} to="/profile"><CircleUserRound size={16} /> Профиль</Link><Link onClick={() => setProfileOpen(false)} to="/profile/settings"><Settings size={16} /> Настройки</Link><button onClick={logout} type="button"><LogIn size={16} /> Выйти</button></div>}</div> : <Link className="header-action" to="/login"><LogIn size={17} /> Войти</Link>}
+          {isAuthenticated ? <><Link className="header-icon" to="/users" aria-label="Поиск пользователей"><Search size={19} /></Link><div className="header-menu"><button className="header-icon" onClick={() => setProfileOpen((value) => !value)} aria-label="Меню профиля" type="button"><CircleUserRound size={21} /></button>{profileOpen && <div className="popover-menu popover-menu--right"><Link onClick={() => setProfileOpen(false)} to="/profile"><CircleUserRound size={16} /> Профиль</Link><Link onClick={() => setProfileOpen(false)} to="/profile/settings"><Settings size={16} /> Настройки</Link><button onClick={logout} type="button"><LogIn size={16} /> Выйти</button></div>}</div></> : <Link className="header-action" to="/login"><LogIn size={17} /> Войти</Link>}
           <button className="header-icon mobile-menu-button" onClick={() => setMobileOpen((value) => !value)} aria-label="Открыть меню" type="button">{mobileOpen ? <X size={21} /> : <Menu size={21} />}</button>
         </div>
       </div>

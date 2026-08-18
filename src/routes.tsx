@@ -3,6 +3,7 @@ import { PrivateRoute } from "./components/PrivateRoute";
 import { PublicOnlyRoute } from "./components/PublicOnlyRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { ProfilePage, ProfileSettingsPage, PublicUserProfilePage } from "./pages/ProfilePage";
+import { AvatarOnboardingPage } from "./pages/AvatarOnboardingPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { CourseFormPage, CoursesPage, ProgramFormPage, ProgramsPage, TopicFormPage, TopicsPage, UniversitiesPage, UniversityFormPage } from "./pages/admin/CatalogPages";
 import { AdminTaskFormPage, AdminTasksPage } from "./pages/admin/TasksAdminPages";
@@ -11,6 +12,7 @@ import { CandidateEditorPage, CollectedTasksPage } from "./pages/admin/Collected
 import { SubmissionDetailPage, SubmissionHistoryPage, TaskSolvePage, TasksPage } from "./pages/tasks/TasksPages";
 import { HomePage } from "./pages/HomePage";
 import { CatalogBrowsePage, CatalogDetailPage } from "./pages/CatalogBrowsePage";
+import { UsersSearchPage } from "./pages/UsersSearchPage";
 
 export function AppRoutes() {
   return (
@@ -32,6 +34,8 @@ export function AppRoutes() {
       <Route path="/history/:id" element={<PrivateRoute><SubmissionDetailPage /></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
       <Route path="/profile/settings" element={<PrivateRoute><ProfileSettingsPage /></PrivateRoute>} />
+      <Route path="/onboarding/avatar" element={<PrivateRoute><AvatarOnboardingPage /></PrivateRoute>} />
+      <Route path="/users" element={<PrivateRoute><UsersSearchPage /></PrivateRoute>} />
       <Route path="/users/:id" element={<PrivateRoute><PublicUserProfilePage /></PrivateRoute>} />
       <Route path="/admin/tasks" element={<PrivateRoute><AdminTasksPage /></PrivateRoute>} />
       <Route path="/admin/tasks/new" element={<PrivateRoute><AdminTaskFormPage create /></PrivateRoute>} />

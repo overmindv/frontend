@@ -6,11 +6,28 @@ export interface User {
   lastName: string;
   birthDate: string | null;
   phone: string | null;
+  avatar: UserAvatar | null;
   roles: string[];
   isAdmin: boolean;
   isSuperuser: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UserAvatar {
+  fileId: string;
+  smallUrl: string;
+  mediumUrl: string;
+}
+
+export interface PublicUser {
+  id: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  avatar: UserAvatar | null;
+  isAdmin: boolean;
+  createdAt: string;
 }
 
 export interface AuthPayload {
