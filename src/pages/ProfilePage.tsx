@@ -1,11 +1,13 @@
 import { useQuery } from "@apollo/client";
-import { Code2, Settings, UserRound } from "lucide-react";
+import { ArrowRight, Code2, Settings, Target, Timer, TrendingUp, UserRound } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { GET_USER_QUERY } from "../api/queries";
 import { MY_IT_CODE_SUBMISSIONS_QUERY, MY_IT_SUBMISSIONS_QUERY, type ITCodeSubmission, type ITSubmission } from "../api/tasks";
 import type { User } from "../api/types";
+import { AnimatedNumber } from "../components/common/AnimatedNumber";
 import { Profile } from "../components/Profile/Profile";
 import { ErrorMessage } from "../components/common/ErrorMessage";
+import { Reveal } from "../components/common/Reveal";
 import { Spinner } from "../components/common/Spinner";
 import { useAuth } from "../context/AuthContext";
 
@@ -42,8 +44,48 @@ function UserProfile({ userID, own }: { userID: string; own: boolean }) {
     ...(code.data?.myITCodeSubmissions.items ?? []).map((item) => ({ id: item.id, taskId: item.taskId, date: item.createdAt, verdict: item.verdict ?? item.status, detail: `${item.language === "python" ? "Python" : "Go"} · файл ${item.sourceFileName}`, href: `/tasks/${item.taskId}` })),
   ].sort((left, right) => right.date.localeCompare(left.date));
   const displayName = [profile.firstName, profile.lastName].filter(Boolean).join(" ") || profile.username;
+  const total = attempts.length;
+  const accepted = attempts.filter((attempt) => attempt.verdict === "accepted").length;
+  const accuracy = total ? Math.round((accepted / total) * 100) : 0;
+  const roleLabel = profile.isSuperuser ? "Суперпользователь" : profile.isAdmin ? "Администратор" : "Участник";
 
-  return <main className="page-shell user-profile-page"><section className="profile-hero"><aside className="profile-identity"><div className="profile-avatar"><span>{displayName.slice(0, 1).toUpperCase()}</span><small>Аватар не загружен</small></div><dl><div><dt>На платформе</dt><dd>с {formatDate(profile.createdAt)}</dd></div><div><dt>Роль</dt><dd>{profile.isSuperuser ? "Суперпользователь" : profile.isAdmin ? "Администратор" : "Пользователь"}</dd></div><div><dt>О себе</dt><dd>Информация не добавлена</dd></div></dl></aside><div className="profile-main"><header><div><span className="section-kicker">Профиль</span><h1>{displayName}</h1><p>@{profile.username}</p></div>{own && <Link className="header-icon profile-settings-link" to="/profile/settings" aria-label="Настройки профиля"><Settings size={20} /></Link>}</header>{own && <div className="profile-private"><span>{profile.email}</span>{profile.phone && <span>{profile.phone}</span>}</div>}<section className="attempts-section"><div className="section-title"><div><span className="section-kicker">Решения</span><h2>Последние попытки</h2></div><Code2 size={19} /></div>{(answers.loading || code.loading) && attempts.length === 0 ? <div className="content-state"><Spinner label="Загружаем попытки…" /></div> : !own ? <div className="content-state content-state--compact"><UserRound size={25} /><strong>История решений скрыта</strong><p>Публичная история появится после настройки правил доступа.</p></div> : attempts.length === 0 ? <div className="content-state content-state--compact"><Code2 size={25} /><strong>Попыток пока нет</strong><p>Откройте задачу и отправьте первое решение.</p></div> : <div className="attempt-list">{attempts.map((attempt) => <Link className="attempt-row" key={`${attempt.detail}-${attempt.id}`} to={attempt.href}><span className={`verdict-dot${attempt.verdict === "accepted" ? " is-accepted" : attempt.verdict === "queued" ? " is-queued" : " is-wrong"}`} /><div><strong>Задача {attempt.taskId.slice(0, 8)}</strong><p>{attempt.detail}</p></div><div><strong>{verdictLabel(attempt.verdict)}</strong><p>{formatDateTime(attempt.date)}</p></div></Link>)}</div>}</section></div></section></main>;
+  return <main className="page-shell user-profile-page">
+    <section className="profile-hero">
+      <Reveal as="aside" className="profile-identity">
+        <div className="profile-avatar"><span>{displayName.slice(0, 1).toUpperCase()}</span><small>С нами с {formatDate(profile.createdAt)}</small></div>
+        <dl>
+          <div><dt>Роль</dt><dd><span className="role-badge">{roleLabel}</span></dd></div>
+          <div><dt>На платформе</dt><dd>с {formatDate(profile.createdAt)}</dd></div>
+        </dl>
+      </Reveal>
+
+      <div className="profile-main">
+        <Reveal as="header">
+          <div>
+            <span className="section-kicker">Профиль</span>
+            <h1>{displayName}</h1>
+            <p>@{profile.username}</p>
+          </div>
+          {own && <Link className="button button--ghost profile-settings-link" to="/profile/settings"><Settings size={17} /> Настройки</Link>}
+        </Reveal>
+
+        {own && (
+          <Reveal className="profile-stats">
+            <div className="stat-card"><span className="stat-card__icon"><Timer size={18} /></span><AnimatedNumber className="stat-card__value" value={total} /><span className="stat-card__label">Всего попыток</span></div>
+            <div className="stat-card"><span className="stat-card__icon"><TrendingUp size={18} /></span><AnimatedNumber className="stat-card__value" value={accepted} /><span className="stat-card__label">Принято</span></div>
+            <div className="stat-card"><span className="stat-card__icon"><Target size={18} /></span><AnimatedNumber className="stat-card__value" value={accuracy} suffix="%" /><span className="stat-card__label">Точность</span></div>
+          </Reveal>
+        )}
+
+        <section className="attempts-section">
+          <div className="section-title"><div><span className="section-kicker">Решения</span><h2>Последние попытки</h2></div><Code2 size={19} /></div>
+          {(answers.loading || code.loading) && attempts.length === 0 ? <div className="content-state"><Spinner label="Загружаем попытки…" /></div> : !own ? <div className="content-state content-state--compact"><UserRound size={25} /><strong>История решений скрыта</strong><p>Публичная история появится после настройки правил доступа.</p></div> : attempts.length === 0 ? <div className="content-state content-state--compact"><Code2 size={25} /><strong>Попыток пока нет</strong><p>Откройте задачу и отправьте первое решение.</p></div> : <div className="attempt-list">{attempts.map((attempt) => <Link className="attempt-row" key={`${attempt.detail}-${attempt.id}`} to={attempt.href}><span className={`verdict-dot${attempt.verdict === "accepted" ? " is-accepted" : attempt.verdict === "queued" || attempt.verdict === "completed" ? " is-queued" : " is-wrong"}`} /><div><strong>Задача {attempt.taskId.slice(0, 8)}</strong><p>{attempt.detail}</p></div><div className="attempt-row__verdict"><span className={`verdict-pill${attempt.verdict === "accepted" ? " is-accepted" : attempt.verdict === "queued" || attempt.verdict === "completed" ? " is-queued" : " is-wrong"}`}>{verdictLabel(attempt.verdict)}</span><p>{formatDateTime(attempt.date)}</p></div></Link>)}
+            <Link className="attempts-more" to="/history">Вся история решений <ArrowRight size={16} /></Link>
+          </div>}
+        </section>
+      </div>
+    </section>
+  </main>;
 }
 
 function verdictLabel(value: string) { return value === "accepted" ? "Принято" : value === "queued" ? "В очереди" : value === "completed" ? "Проверено" : "Ошибка"; }
