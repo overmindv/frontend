@@ -5,12 +5,14 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import type { Topic } from "../../api/catalog";
 import { getErrorMessage } from "../../api/errors";
 import {
+  IT_CODE_SUBMISSION_QUERY,
   IT_TASK_QUERY,
   IT_TASK_TOPICS_QUERY,
   IT_TASKS_QUERY,
   IT_SUBMISSION_QUERY,
   MY_IT_SUBMISSIONS_QUERY,
   SUBMIT_IT_TASK_ANSWER,
+  type ITCodeSubmission,
   type ITSubmission,
   type ITSubmissionInput,
   type ITTask,
@@ -22,7 +24,8 @@ import {
 import { ErrorMessage } from "../../components/common/ErrorMessage";
 import { Spinner } from "../../components/common/Spinner";
 import { useAuth } from "../../context/AuthContext";
-import { ProgrammingTaskSolve } from "./ProgrammingTaskSolve";
+import { CodeSubmissionResult, ProgrammingTaskSolve } from "./ProgrammingTaskSolve";
+import { TaskSolveStatusBanner, useTaskSolveStatus } from "./useTaskSolveStatus";
 
 const pageSize = 12;
 
@@ -145,6 +148,7 @@ export function TaskSolvePage() {
     { taskId: string; input: ITSubmissionInput }
   >(SUBMIT_IT_TASK_ANSWER);
   const task = data?.itTask;
+  const { stats: solveStats } = useTaskSolveStatus(id, isAuthenticated);
 
   // toggleOption обновляет множество выбранных ответов и начинает новую попытку.
   const toggleOption = (optionID: string) => {
@@ -199,11 +203,12 @@ export function TaskSolvePage() {
   }
 
   if (task.taskType === "programming") {
-    return <ProgrammingTaskSolve task={task} isAuthenticated={isAuthenticated} />;
+    return <ProgrammingTaskSolve task={task} isAuthenticated={isAuthenticated} solveStatus={solveStats} />;
   }
 
   return (
     <main className="page-shell solve-layout">
+      {solveStats && <TaskSolveStatusBanner stats={solveStats} />}
       <aside className="solve-aside">
         <Link className="back-link" to="/tasks">← Все задачи</Link>
         <div className="solve-index">IT / {task.versionNumber.toString().padStart(2, "0")}</div>
@@ -363,6 +368,60 @@ export function SubmissionDetailPage() {
         )}
         <footer>
           <Link className="button button--primary" to={`/tasks/${submission.taskId}`}>Открыть актуальную задачу</Link>
+        </footer>
+      </section>
+    </main>
+  );
+}
+
+// CodeSubmissionDetailPage показывает сохранённый результат программной попытки:
+// вердикт, метаданные, исходный код и детали запуска из песочницы.
+export function CodeSubmissionDetailPage() {
+  const { id = "" } = useParams();
+  const { data, loading, error } = useQuery<{ itCodeSubmission: ITCodeSubmission }>(IT_CODE_SUBMISSION_QUERY, {
+    variables: { id },
+  });
+  const submission = data?.itCodeSubmission;
+  const { data: taskData } = useQuery<{ itTask: ITTask }>(IT_TASK_QUERY, {
+    variables: { id: submission?.taskId ?? "" },
+    skip: !submission,
+  });
+  const task = taskData?.itTask;
+
+  if (loading && !submission) {
+    return <main className="page-shell panel panel--center"><Spinner label="Загружаем результат…" /></main>;
+  }
+  if (error || !submission) {
+    return <main className="page-shell panel"><ErrorMessage message={getErrorMessage(error)} /></main>;
+  }
+
+  const accepted = submission.verdict === "accepted";
+  const passed = submission.tests.filter((test) => test.verdict === "accepted").length;
+
+  return (
+    <main className="page-shell result-page">
+      <Link className="back-link" to="/history">← История попыток</Link>
+      <section className={`result-card code-result-card ${accepted ? "is-accepted" : "is-wrong"}`}>
+        <header>
+          <span className="eyebrow">Программное решение</span>
+          <h1>{accepted ? "Решение принято" : "Решение не принято"}</h1>
+          <p>{formatDate(submission.completedAt ?? submission.createdAt)}</p>
+        </header>
+        <dl className="result-metrics">
+          <div><dt>Язык</dt><dd>{submission.language === "python" ? "Python" : "Go"}</dd></div>
+          <div><dt>Файл</dt><dd>{submission.sourceFileName}</dd></div>
+          <div><dt>Версия задачи</dt><dd>{submission.taskVersionNumber}</dd></div>
+          <div><dt>Решено тестов</dt><dd>{submission.tests.length > 0 ? `${passed} из ${submission.tests.length}` : "—"}</dd></div>
+        </dl>
+        {submission.sourceCode && (
+          <section className="solution-source">
+            <div className="solution-source__heading"><span>Исходный код</span><b>{submission.sourceFileName}</b></div>
+            <pre className="solution-source__body">{submission.sourceCode}</pre>
+          </section>
+        )}
+        <CodeSubmissionResult examples={task?.examples ?? []} submission={submission} />
+        <footer>
+          <Link className="button button--primary" to={`/tasks/${submission.taskId}`}>Открыть задачу</Link>
         </footer>
       </section>
     </main>
