@@ -5,14 +5,17 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
 import { TOKEN_STORAGE_KEY, USER_ID_STORAGE_KEY } from "../../api/client";
 import {
+  IT_CODE_SUBMISSION_QUERY,
   IT_TASK_QUERY,
   IT_TASK_TOPICS_QUERY,
   IT_TASKS_QUERY,
+  MY_IT_CODE_SUBMISSIONS_QUERY,
+  MY_IT_SUBMISSIONS_QUERY,
   SUBMIT_IT_TASK_ANSWER,
   SUBMIT_IT_TASK_CODE,
 } from "../../api/tasks";
 import { AuthProvider } from "../../context/AuthContext";
-import { TaskSolvePage, TasksPage } from "./TasksPages";
+import { CodeSubmissionDetailPage, TaskSolvePage, TasksPage } from "./TasksPages";
 
 const task = {
   __typename: "ITTask",
@@ -231,4 +234,145 @@ test("карточка задачи целиком ведёт на страни�
   const card = await screen.findByRole("link", { name: "Открыть задачу Интерфейсы Go" });
   expect(card).toHaveAttribute("href", "/tasks/task-id");
   expect(screen.queryByText("Решить")).not.toBeInTheDocument();
+});
+
+// TestCodeSubmissionDetail показывает сохранённый результат программной попытки.
+test("страница результата кодового решения показывает вердикт и исходный код", async () => {
+  localStorage.setItem(TOKEN_STORAGE_KEY, "token");
+  localStorage.setItem(USER_ID_STORAGE_KEY, "user-id");
+
+  const programmingTask = {
+    ...task,
+    id: "programming-id",
+    taskVersionId: "version-id",
+    title: "Калькулятор",
+    statement: "Вычислите значение выражения",
+    taskType: "programming",
+    options: [],
+    tags: [],
+    examples: [{ __typename: "ITTaskExample", input: "2 + 2", output: "4", explanation: "" }],
+    constraints: [],
+    source: null,
+  };
+
+  render(
+    <MockedProvider
+      mocks={[
+        {
+          request: { query: IT_CODE_SUBMISSION_QUERY, variables: { id: "code-submission-id" } },
+          result: {
+            data: {
+              itCodeSubmission: {
+                __typename: "ITCodeSubmission",
+                id: "code-submission-id",
+                userId: "user-id",
+                taskId: "programming-id",
+                taskVersionId: "version-id",
+                taskVersionNumber: 1,
+                executionId: "execution-id",
+                correlationId: "correlation-id",
+                language: "python",
+                sourceFileName: "solution.py",
+                sourceCode: "print(4)\n",
+                status: "completed",
+                verdict: "accepted",
+                compilation: null,
+                execution: {
+                  __typename: "ITExecutionPhaseResult",
+                  exitCode: 0,
+                  stdout: "4\n",
+                  stderr: "",
+                  durationMs: 7,
+                  memoryBytes: 1024,
+                },
+                tests: [
+                  { __typename: "ITExecutionTestResult", testId: "t1", verdict: "accepted", stdout: "4\n", stderr: "", durationMs: 7, memoryBytes: 1024 },
+                ],
+                failure: null,
+                createdAt: "2026-08-13T10:00:00Z",
+                updatedAt: "2026-08-13T10:00:01Z",
+                completedAt: "2026-08-13T10:00:01Z",
+              },
+            },
+          },
+        },
+        {
+          request: { query: IT_TASK_QUERY, variables: { id: "programming-id" } },
+          result: { data: { itTask: programmingTask } },
+        },
+      ]}
+    >
+      <MemoryRouter initialEntries={["/code-submission/code-submission-id"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/code-submission/:id" element={<CodeSubmissionDetailPage />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    </MockedProvider>,
+  );
+
+  expect(await screen.findByRole("heading", { name: "Решение принято" })).toBeInTheDocument();
+  expect(screen.getByText(/print\(4\)/)).toBeInTheDocument();
+  expect(screen.getAllByText("solution.py").length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/1 из 1/).length).toBeGreaterThan(0);
+});
+
+// TestTaskSolveStatusBanner показывает маркер «решена правильно» при повторном открытии.
+test("на странице задачи показывается, что задача решена правильно", async () => {
+  localStorage.setItem(TOKEN_STORAGE_KEY, "token");
+  localStorage.setItem(USER_ID_STORAGE_KEY, "user-id");
+
+  render(
+    <MockedProvider
+      mocks={[
+        { request: { query: IT_TASK_QUERY, variables: { id: "task-id" } }, result: { data: { itTask: task } } },
+        {
+          request: { query: MY_IT_SUBMISSIONS_QUERY, variables: { taskId: "task-id", pagination: { limit: 100, offset: 0 } } },
+          result: {
+            data: {
+              myITSubmissions: {
+                items: [
+                  {
+                    __typename: "ITSubmission",
+                    id: "submission-id",
+                    userId: "user-id",
+                    taskId: "task-id",
+                    taskVersionId: "version-id",
+                    taskVersionNumber: 1,
+                    selectedOptionIds: ["option-a"],
+                    correctOptionIds: ["option-a"],
+                    correct: true,
+                    verdict: "accepted",
+                    taskUpdated: false,
+                    latestTaskVersionId: "version-id",
+                    latestVersionNumber: 1,
+                    createdAt: "2026-08-03T10:05:00Z",
+                  },
+                ],
+                limit: 100,
+                offset: 0,
+              },
+            },
+          },
+        },
+        {
+          request: { query: MY_IT_CODE_SUBMISSIONS_QUERY, variables: { taskId: "task-id", pagination: { limit: 100, offset: 0 } } },
+          result: { data: { myITCodeSubmissions: { items: [], limit: 100, offset: 0 } } },
+        },
+      ]}
+    >
+      <MemoryRouter initialEntries={["/tasks/task-id"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/tasks/:id" element={<TaskSolvePage />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    </MockedProvider>,
+  );
+
+  expect(await screen.findByText("Решена правильно")).toBeInTheDocument();
+  expect(screen.getByText("100%")).toBeInTheDocument();
+  expect(screen.getByText("Попытки")).toBeInTheDocument();
 });

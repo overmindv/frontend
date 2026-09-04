@@ -367,6 +367,88 @@ body::before {
 .tag-list button.status-tag { cursor: pointer; transition: color 140ms ease, border-color 140ms ease, background 140ms ease; }
 .tag-list button.status-tag:hover { color: #d9f4ff; background: #12334a; border-color: var(--accent); }
 .field-hint { margin: 0; padding: 12px 14px; color: var(--muted); background: #091521; border-left: 2px solid #2c536e; font-size: 0.82rem; }
+
+/* TaskSolveStatusBanner — маркер «решена правильно / неверное / не решалась» и сводка попыток. */
+.task-solve-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  padding: 14px 20px;
+  background: #0a1724;
+  border: 1px solid var(--line);
+  border-top: 3px solid;
+  border-radius: 8px;
+}
+.task-solve-status.is-solved { border-top-color: var(--success); }
+.task-solve-status.is-wrong { border-top-color: var(--danger); }
+.task-solve-status.is-none { border-top-color: var(--line-strong); }
+.task-solve-status__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #d5ebf7;
+}
+.task-solve-status.is-solved .task-solve-status__badge { color: var(--success); }
+.task-solve-status.is-wrong .task-solve-status__badge { color: var(--danger); }
+.task-solve-status.is-none .task-solve-status__badge { color: var(--muted); }
+.task-solve-status__badge strong { color: inherit; }
+.task-solve-status__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 26px;
+  margin: 0;
+}
+.task-solve-status__metrics div { display: grid; gap: 2px; }
+.task-solve-status__metrics dt { color: var(--muted); font-size: 0.7rem; }
+.task-solve-status__metrics dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+/* SolutionSource — исходный код программного решения на странице результата. */
+.solution-source {
+  border-bottom: 1px solid var(--line);
+}
+.solution-source__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  background: #0a1724;
+  border-bottom: 1px solid var(--line);
+}
+.solution-source__heading span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.solution-source__heading b {
+  color: var(--accent-strong);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  font-weight: normal;
+}
+.solution-source__body {
+  margin: 0;
+  padding: 18px 20px;
+  background: #08131f;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* CodeSubmissionDetailPage — переиспользует .result-card блока результата. */
+.code-result-card > .code-result { border: 0; border-radius: 0; }
+
 .programming-solve-page {
   display: grid;
   gap: 18px;

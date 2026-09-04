@@ -21,6 +21,7 @@ import {
 } from "../../api/tasks";
 import { ErrorMessage } from "../../components/common/ErrorMessage";
 import { Spinner } from "../../components/common/Spinner";
+import { TaskSolveStatusBanner, type TaskSolveStats } from "./useTaskSolveStatus";
 
 const maxSourceFileSize = 256 * 1024;
 const pollingInterval = 1500;
@@ -28,10 +29,11 @@ const pollingInterval = 1500;
 interface ProgrammingTaskSolveProps {
   task: ITTask;
   isAuthenticated: boolean;
+  solveStatus?: TaskSolveStats | null;
 }
 
 // ProgrammingTaskSolve показывает условие и отправку файла в двух равных колонках.
-export function ProgrammingTaskSolve({ task, isAuthenticated }: ProgrammingTaskSolveProps) {
+export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: ProgrammingTaskSolveProps) {
   const [language, setLanguage] = useState<ITProgrammingLanguage>("python");
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [validationError, setValidationError] = useState("");
@@ -177,6 +179,8 @@ export function ProgrammingTaskSolve({ task, isAuthenticated }: ProgrammingTaskS
 
   return (
     <main className="page-shell programming-solve-page">
+      {solveStatus && <TaskSolveStatusBanner stats={solveStatus} />}
+
       <div className="programming-solve-nav">
         <Link className="back-link" to="/tasks">
           ← Все задачи
@@ -352,7 +356,7 @@ function TaskConstraints({ constraints }: { constraints: string[] }) {
 // CodeSubmissionResult показывает очередь и leetcode-стиль результат sandbox:
 // сводку «X из N тестов прошло» и сворачиваемые кейсы с входом, ожидаемым
 // и фактическим выводом. tests[i] соответствует i-му открытому примеру задачи.
-function CodeSubmissionResult({
+export function CodeSubmissionResult({
   examples,
   submission,
 }: {
