@@ -284,7 +284,7 @@ export function ProgrammingTaskSolve({ task, isAuthenticated }: ProgrammingTaskS
             )}
           </form>
 
-          <CodeSubmissionResult submission={submission} />
+          <CodeSubmissionResult examples={task.examples} submission={submission} />
         </aside>
       </div>
     </main>
@@ -349,8 +349,23 @@ function TaskConstraints({ constraints }: { constraints: string[] }) {
   );
 }
 
-// CodeSubmissionResult показывает очередь и полный безопасный результат sandbox.
-function CodeSubmissionResult({ submission }: { submission: ITCodeSubmission | null }) {
+// CodeSubmissionResult показывает очередь и leetcode-стиль результат sandbox:
+// сводку «X из N тестов прошло» и сворачиваемые кейсы с входом, ожидаемым
+// и фактическим выводом. tests[i] соответствует i-му открытому примеру задачи.
+function CodeSubmissionResult({
+  examples,
+  submission,
+}: {
+  examples: ITTask["examples"];
+  submission: ITCodeSubmission | null;
+}) {
+  const [expanded, setExpanded] = useState<ReadonlySet<number>>(new Set());
+
+  // Сброс раскрытых кейсов при переходе к другой попытке (сменился id submission).
+  useEffect(() => {
+    setExpanded(new Set());
+  }, [submission?.id]);
+
   if (!submission) {
     return (
       <section className="code-result code-result--empty">
@@ -369,7 +384,24 @@ function CodeSubmissionResult({ submission }: { submission: ITCodeSubmission | n
     );
   }
 
+  // Открытые примеры (с ожидаемым выводом) — их порядок совпадает с tests[].
+  const openExamples = examples.filter((example) => example.output.trim() !== "");
   const accepted = submission.verdict === "accepted";
+  const passedCount = submission.tests.filter((test) => test.verdict === "accepted").length;
+  const totalCount = submission.tests.length;
+
+  const toggleCase = (index: number) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+
+      return next;
+    });
+  };
 
   return (
     <section
@@ -379,10 +411,15 @@ function CodeSubmissionResult({ submission }: { submission: ITCodeSubmission | n
       <header>
         <div>
           <span>Результат</span>
-          <h3>{verdictLabel(submission.verdict)}</h3>
+          <span className={`code-status-chip ${accepted ? "is-accepted" : "is-wrong"}`}>
+            {accepted ? "✓" : "✗"} {verdictLabel(submission.verdict)}
+          </span>
+          <p className="code-summary">
+            {totalCount > 0
+              ? `${passedCount} из ${totalCount} тестов прошло`
+              : verdictLabel(submission.verdict)}
+          </p>
         </div>
-
-        <b>{submission.verdict ?? "unknown"}</b>
       </header>
 
       {submission.failure && (
@@ -402,25 +439,69 @@ function CodeSubmissionResult({ submission }: { submission: ITCodeSubmission | n
 
       {submission.tests.length > 0 && (
         <div className="code-tests">
-          {submission.tests.map((test, index) => (
-            <article key={test.testId}>
-              <header>
-                <strong>Тест {index + 1}</strong>
-                <span className={test.verdict === "accepted" ? "is-accepted" : "is-wrong"}>
-                  {verdictLabel(test.verdict)}
-                </span>
-              </header>
+          {submission.tests.map((test, index) => {
+            const example = openExamples[index];
+            const actual = test.stdout || test.stderr;
+            const caseAccepted = test.verdict === "accepted";
+            const isOpen = expanded.has(index);
+            const mismatched =
+              example !== undefined &&
+              actual.trim() !== "" &&
+              actual.trim() !== example.output.trim();
 
-              <div className="code-phase__metrics">
-                <span>{test.durationMs} мс</span>
-                <span>{formatFileSize(test.memoryBytes)}</span>
-              </div>
+            return (
+              <article className="code-test-case" key={test.testId}>
+                <button
+                  aria-expanded={isOpen}
+                  className="code-test-case__header"
+                  onClick={() => toggleCase(index)}
+                  type="button"
+                >
+                  <strong>Тест {index + 1}</strong>
 
-              {(test.stdout || test.stderr) && (
-                <pre>{test.stderr || test.stdout}</pre>
-              )}
-            </article>
-          ))}
+                  <span className={`code-status-chip ${caseAccepted ? "is-accepted" : "is-wrong"}`}>
+                    {caseAccepted ? "✓" : "✗"} {verdictLabel(test.verdict)}
+                  </span>
+
+                  <span className="code-phase__metrics">
+                    <span>{test.durationMs} мс</span>
+                    <span>{formatFileSize(test.memoryBytes)}</span>
+                  </span>
+
+                  <span aria-hidden="true" className="code-test-case__chevron">
+                    {isOpen ? "▾" : "▸"}
+                  </span>
+                </button>
+
+                {isOpen && (
+                  <div className="code-test-case__body">
+                    {example && (
+                      <div className="code-test-case__io">
+                        <div>
+                          <span>Вход</span>
+                          <pre>{example.input || "(пусто)"}</pre>
+                        </div>
+
+                        <div>
+                          <span>Ожидаемый вывод</span>
+                          <pre>{example.output}</pre>
+                        </div>
+
+                        <div className={mismatched ? "is-wrong" : undefined}>
+                          <span>Фактический вывод</span>
+                          <pre>{actual === "" ? "(пусто)" : actual}</pre>
+                        </div>
+                      </div>
+                    )}
+
+                    {!example && actual !== "" && <pre>{actual}</pre>}
+
+                    {test.stderr && <pre className="code-test-case__stderr">{test.stderr}</pre>}
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
     </section>
