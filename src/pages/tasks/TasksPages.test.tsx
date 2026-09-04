@@ -218,7 +218,7 @@ test("пользователь отправляет файл programming-зад�
   expect(screen.getByText(/готов к отправке/)).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "Отправить на проверку" }));
 
-  expect(await screen.findByRole("heading", { name: "Решение принято" })).toBeInTheDocument();
+  expect(await screen.findByText("✓ Решение принято")).toBeInTheDocument();
   expect(screen.getByText("7 мс")).toBeInTheDocument();
 });
 
