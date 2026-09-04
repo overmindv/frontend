@@ -16,7 +16,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   const [preference, setPreference] = useState<ThemePreference>(() => {
     const stored = localStorage.getItem(storageKey);
 
-    return stored === "light" || stored === "dark" ? stored : "system";
+    return stored === "light" || stored === "dark" ? stored : "light";
   });
   const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() =>
     window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark",
@@ -41,10 +41,10 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     preference,
     resolvedTheme,
     cycleTheme: () => {
-      const next = preference === "system" ? "light" : preference === "light" ? "dark" : "system";
+      // Каждое нажатие переключает видимую тему: тёмная ↔ светлая.
+      const next: ThemePreference = resolvedTheme === "dark" ? "light" : "dark";
       setPreference(next);
-      if (next === "system") localStorage.removeItem(storageKey);
-      else localStorage.setItem(storageKey, next);
+      localStorage.setItem(storageKey, next);
     },
   }), [preference, resolvedTheme]);
 
