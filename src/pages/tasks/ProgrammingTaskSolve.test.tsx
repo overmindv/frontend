@@ -111,6 +111,21 @@ function renderSolve() {
             },
             result: { data: { submitITTaskCode: completedCodeSubmission } },
           },
+          {
+            request: {
+              query: SUBMIT_IT_TASK_CODE,
+              variables: {
+                taskId: "programming-id",
+                input: {
+                  taskVersionId: "programming-version-id",
+                  idempotencyKey: "33333333-3333-4333-8333-333333333333",
+                  language: "python",
+                  sourceCode: "print(input())",
+                },
+              },
+            },
+            result: { data: { submitITTaskCode: completedCodeSubmission } },
+          },
         ]}
       >
         <MemoryRouter initialEntries={["/tasks/programming-id"]}>
@@ -132,6 +147,8 @@ test("панель результата показывает сводку и с�
 
   expect(await screen.findByRole("heading", { name: "Калькулятор" })).toBeInTheDocument();
 
+  // Файловый способ: переключаемся в режим «Загрузить файл», выбираем файл и отправляем.
+  await user.click(screen.getByRole("tab", { name: "Загрузить файл" }));
   await user.upload(screen.getByLabelText(/Выберите файл решения/), sourceFile);
   await user.click(screen.getByRole("button", { name: "Отправить на проверку" }));
 
@@ -159,4 +176,21 @@ test("панель результата показывает сводку и с�
   const secondCase = screen.getByRole("button", { name: /Тест 2/ }).closest("article") as HTMLElement;
   expect(within(secondCase).getByText("5")).toBeInTheDocument();
   expect(secondCase.querySelector(".code-test-case__io > div.is-wrong")).not.toBeNull();
+});
+
+// Код из консоли — основной режим по умолчанию: введённый код отправляется как sourceCode.
+test("код из консоли отправляется как sourceCode", async () => {
+  const { user } = renderSolve();
+
+  expect(await screen.findByRole("heading", { name: "Калькулятор" })).toBeInTheDocument();
+
+  // По умолчанию активен режим «Ввести код»; файл-дроп скрыт.
+  expect(screen.getByRole("tab", { name: "Ввести код" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.queryByLabelText(/Выберите файл решения/)).not.toBeInTheDocument();
+
+  await user.type(screen.getByLabelText(/Код решения/), "print(input())");
+  await user.click(screen.getByRole("button", { name: "Отправить на проверку" }));
+
+  // Результат sandbox отображается после ответа мутации с sourceCode.
+  expect(await screen.findByText("1 из 2 тестов прошло")).toBeInTheDocument();
 });

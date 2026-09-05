@@ -629,6 +629,36 @@ body::before {
   font-size: 0.62rem;
 }
 
+.programming-solve-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 20px 28px 0;
+}
+
+.programming-solve-mode button {
+  padding: 9px 10px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.programming-solve-mode button:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.programming-solve-mode button.is-active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
 .code-upload-form {
   display: grid;
   gap: 18px;
@@ -1219,6 +1249,7 @@ body::before { display: none; }
 .solve-resizer span { width: 3px; height: 42px; background: var(--line-strong); border-radius: 5px; }
 .solve-resizer:focus-visible span, .solve-resizer:hover span { background: var(--accent); }
 .code-editor-stub { margin: 18px 20px 0; overflow: hidden; background: #080d13; border: 1px solid var(--line); border-radius: 8px; }
+.code-editor-stub--file { opacity: 0.55; filter: grayscale(0.3); }
 :root[data-theme="light"] .code-editor-stub { background: #f8fafc; }
 .code-editor-stub__bar { height: 42px; display: flex; align-items: center; justify-content: space-between; padding: 0 13px; color: var(--muted); background: var(--surface-raised); border-bottom: 1px solid var(--line); font: .72rem ui-monospace, monospace; }
 .code-editor-stub__body { min-height: 260px; display: grid; grid-template-columns: 38px 1fr; }

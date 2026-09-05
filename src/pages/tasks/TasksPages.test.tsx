@@ -202,7 +202,7 @@ test("пользователь отправляет файл programming-зад�
   );
 
   expect(await screen.findByRole("heading", { name: "Калькулятор" })).toBeInTheDocument();
-  const editor = screen.getByRole("textbox", { name: "Черновик решения" });
+  const editor = screen.getByRole("textbox", { name: "Код решения" });
   await user.type(editor, "print(4)");
   expect(editor).toHaveValue("print(4)");
   const separator = screen.getByRole("separator", { name: "Изменить ширину панелей" });
@@ -216,6 +216,7 @@ test("пользователь отправляет файл programming-зад�
     "https://coderun.yandex.ru/problem/calculator",
   );
 
+  await user.click(screen.getByRole("tab", { name: "Загрузить файл" }));
   await user.upload(screen.getByLabelText(/Выберите файл решения/), sourceFile);
 
   expect(screen.getByText(/готов к отправке/)).toBeInTheDocument();
