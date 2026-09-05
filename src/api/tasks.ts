@@ -157,7 +157,8 @@ export interface ITCodeSubmissionInput {
   taskVersionId: string;
   idempotencyKey: string;
   language: ITProgrammingLanguage;
-  file: File;
+  file?: File;
+  sourceCode?: string;
 }
 
 const TASK_SUMMARY_FIELDS = gql`

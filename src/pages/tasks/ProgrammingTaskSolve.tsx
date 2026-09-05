@@ -26,15 +26,24 @@ import { TaskSolveStatusBanner, type TaskSolveStats } from "./useTaskSolveStatus
 const maxSourceFileSize = 256 * 1024;
 const pollingInterval = 1500;
 
+type SolveMode = "editor" | "file";
+
+// defaultFileNameFor возвращает каноническое имя файла решения по языку (совпадает с backend).
+function defaultFileNameFor(language: ITProgrammingLanguage): string {
+  return language === "python" ? "solution.py" : "main.go";
+}
+
 interface ProgrammingTaskSolveProps {
   task: ITTask;
   isAuthenticated: boolean;
   solveStatus?: TaskSolveStats | null;
 }
 
-// ProgrammingTaskSolve показывает условие и отправку файла в двух равных колонках.
+// ProgrammingTaskSolve показывает условие и способ отправки решения
+// (код из консоли либо файл) в двух равных колонках.
 export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: ProgrammingTaskSolveProps) {
   const [language, setLanguage] = useState<ITProgrammingLanguage>("python");
+  const [solveMode, setSolveMode] = useState<SolveMode>("editor");
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [validationError, setValidationError] = useState("");
   const [submission, setSubmission] = useState<ITCodeSubmission | null>(null);
@@ -43,6 +52,9 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
   const splitContainer = useRef<HTMLDivElement>(null);
   const [split, setSplit] = useState(() => Number(localStorage.getItem("overmindv-solve-split")) || 50);
   const [draftCode, setDraftCode] = useState("");
+
+  // sourceReady сообщает, заполнен ли источник активного способа решения.
+  const sourceReady = solveMode === "editor" ? draftCode.trim() !== "" : sourceFile !== null;
 
   const [submitCode, submitState] = useMutation<
     { submitITTaskCode: ITCodeSubmission },
@@ -77,11 +89,27 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
   const handleLanguageChange = (event: ChangeEvent<HTMLSelectElement>) => {
     setLanguage(event.target.value as ITProgrammingLanguage);
     setSourceFile(null);
+    setDraftCode("");
     resetAttempt();
 
     if (fileInput.current) {
       fileInput.current.value = "";
     }
+  };
+
+  // handleModeChange переключает источник решения: код из консоли либо файл.
+  const handleModeChange = (mode: SolveMode) => {
+    if (mode === solveMode) {
+      return;
+    }
+    setSolveMode(mode);
+    resetAttempt();
+  };
+
+  // handleEditorChange обновляет черновик кода и сбрасывает прежний результат проверки.
+  const handleEditorChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    setDraftCode(event.target.value);
+    resetAttempt();
   };
 
   // handleFileChange проверяет размер и расширение до отправки на backend.
@@ -120,11 +148,26 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
     setSourceFile(file);
   };
 
-  // handleSubmit отправляет файл по версии задачи, которую видит пользователь.
+  // handleSubmit отправляет активный источник (код из консоли либо файл)
+  // по версии задачи, которую видит пользователь.
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!sourceFile || submission?.status === "queued") {
+    if (submission?.status === "queued") {
+      return;
+    }
+
+    if (solveMode === "editor") {
+      if (draftCode.trim() === "") {
+        setValidationError("Введите код решения");
+        return;
+      }
+      if (draftCode.length > maxSourceFileSize) {
+        setValidationError("Код не должен превышать 256 КБ");
+        return;
+      }
+    } else if (!sourceFile) {
+      setValidationError("Выберите файл решения");
       return;
     }
 
@@ -138,12 +181,20 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
     const response = await submitCode({
       variables: {
         taskId: task.id,
-        input: {
-          taskVersionId: task.taskVersionId,
-          idempotencyKey: key,
-          language,
-          file: sourceFile,
-        },
+        input:
+          solveMode === "editor"
+            ? {
+                taskVersionId: task.taskVersionId,
+                idempotencyKey: key,
+                language,
+                sourceCode: draftCode,
+              }
+            : {
+                taskVersionId: task.taskVersionId,
+                idempotencyKey: key,
+                language,
+                file: sourceFile as File,
+              },
       },
     });
 
@@ -231,10 +282,33 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
               <h2>Решение</h2>
             </div>
 
-            <span className="programming-workspace__mode">FILE MODE</span>
+            <span className="programming-workspace__mode">
+              {solveMode === "editor" ? "EDITOR MODE" : "FILE MODE"}
+            </span>
           </header>
 
-          <div className="code-editor-stub"><div className="code-editor-stub__bar"><span>{language === "python" ? "solution.py" : "solution.go"}</span><small>Черновик не отправляется</small></div><div className="code-editor-stub__body"><span aria-hidden="true">1<br />2<br />3<br />4<br />5<br />6<br />7<br />8<br />9<br />10</span><textarea aria-label="Черновик решения" onChange={(event) => setDraftCode(event.target.value)} placeholder={language === "python" ? "# Напишите решение здесь\n# Отправка пока доступна только файлом" : "// Напишите решение здесь\n// Отправка пока доступна только файлом"} spellCheck={false} value={draftCode} /></div></div>
+          <div className="programming-solve-mode" aria-label="Способ решения" role="tablist">
+            <button
+              aria-selected={solveMode === "editor"}
+              className={solveMode === "editor" ? "is-active" : ""}
+              onClick={() => handleModeChange("editor")}
+              role="tab"
+              type="button"
+            >
+              Ввести код
+            </button>
+            <button
+              aria-selected={solveMode === "file"}
+              className={solveMode === "file" ? "is-active" : ""}
+              onClick={() => handleModeChange("file")}
+              role="tab"
+              type="button"
+            >
+              Загрузить файл
+            </button>
+          </div>
+
+          <div className={`code-editor-stub${solveMode === "file" ? " code-editor-stub--file" : ""}`}><div className="code-editor-stub__bar"><span>{defaultFileNameFor(language)}</span><small>{solveMode === "editor" ? "Будет отправлено" : "Используется файл"}</small></div><div className="code-editor-stub__body"><span aria-hidden="true">1<br />2<br />3<br />4<br />5<br />6<br />7<br />8<br />9<br />10</span><textarea aria-label="Код решения" onChange={handleEditorChange} placeholder={language === "python" ? "# Напишите решение здесь\ndef solve():\n    pass" : "// Напишите решение здесь\npackage main\n\nfunc main() {}"} spellCheck={false} value={draftCode} /></div></div>
 
           <form className="code-upload-form" onSubmit={(event) => void handleSubmit(event)}>
             <label className="field">
@@ -245,22 +319,24 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
               </select>
             </label>
 
-            <label className={`code-file-drop${sourceFile ? " has-file" : ""}`}>
-              <input
-                accept={language === "python" ? ".py" : ".go"}
-                onChange={handleFileChange}
-                ref={fileInput}
-                type="file"
-              />
+            {solveMode === "file" && (
+              <label className={`code-file-drop${sourceFile ? " has-file" : ""}`}>
+                <input
+                  accept={language === "python" ? ".py" : ".go"}
+                  onChange={handleFileChange}
+                  ref={fileInput}
+                  type="file"
+                />
 
-              <span className="code-file-drop__icon">↥</span>
-              <strong>{sourceFile ? sourceFile.name : "Выберите файл решения"}</strong>
-              <small>
-                {sourceFile
-                  ? `${formatFileSize(sourceFile.size)} · готов к отправке`
-                  : `${language === "python" ? ".py" : ".go"}, не больше 256 КБ`}
-              </small>
-            </label>
+                <span className="code-file-drop__icon">↥</span>
+                <strong>{sourceFile ? sourceFile.name : "Выберите файл решения"}</strong>
+                <small>
+                  {sourceFile
+                    ? `${formatFileSize(sourceFile.size)} · готов к отправке`
+                    : `${language === "python" ? ".py" : ".go"}, не больше 256 КБ`}
+                </small>
+              </label>
+            )}
 
             {validationError && <ErrorMessage message={validationError} />}
             {requestError && <ErrorMessage message={getErrorMessage(requestError)} />}
@@ -268,7 +344,7 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
             {isAuthenticated ? (
               <button
                 className="button button--primary"
-                disabled={!sourceFile || submitState.loading || submission?.status === "queued"}
+                disabled={!sourceReady || submitState.loading || submission?.status === "queued"}
                 type="submit"
               >
                 {submitState.loading ? (
