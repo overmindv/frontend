@@ -1,10 +1,10 @@
 import { MockedProvider } from "@apollo/client/testing";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { TOKEN_STORAGE_KEY, USER_ID_STORAGE_KEY } from "../api/client";
 import { GET_USER_QUERY } from "../api/queries";
 import { MY_IT_CODE_SUBMISSIONS_QUERY, MY_IT_SUBMISSIONS_QUERY } from "../api/tasks";
 import { AuthProvider } from "../context/AuthContext";
+import { authUser, meMock } from "../test/authMocks";
 import { ProfilePage } from "./ProfilePage";
 
 const user = {
@@ -25,12 +25,11 @@ const user = {
 
 // TestProfileCodeLink проверяет, что программная попытка ведёт на страницу результата.
 test("кодовая попытка в профиле ведёт на страницу результата решения", async () => {
-  localStorage.setItem(TOKEN_STORAGE_KEY, "token");
-  localStorage.setItem(USER_ID_STORAGE_KEY, "user-id");
-
+  const authUserFull = { ...authUser, ...user };
   render(
     <MockedProvider
       mocks={[
+        meMock(authUserFull),
         {
           request: { query: GET_USER_QUERY, variables: { id: "user-id" } },
           result: { data: { getUser: user } },

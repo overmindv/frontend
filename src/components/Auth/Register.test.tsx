@@ -3,8 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { REGISTER_MUTATION } from "../../api/mutations";
-import { TOKEN_STORAGE_KEY } from "../../api/client";
 import { AuthProvider } from "../../context/AuthContext";
+import { meMock } from "../../test/authMocks";
 import { Register } from "./Register";
 
 test("регистрирует пользователя и автоматически входит", async () => {
@@ -22,7 +22,9 @@ test("регистрирует пользователя и автоматиче�
   render(
     <MockedProvider
       addTypename={false}
-      mocks={[{
+      mocks={[
+        meMock(null),
+        {
         request: { query: REGISTER_MUTATION, variables },
         result: {
           data: {
@@ -47,7 +49,7 @@ test("регистрирует пользователя и автоматиче�
             },
           },
         },
-      }]}
+        }]}
     >
       <MemoryRouter initialEntries={["/register"]}>
         <AuthProvider>
@@ -69,5 +71,6 @@ test("регистрирует пользователя и автоматиче�
   await user.click(screen.getByRole("button", { name: "Создать аккаунт" }));
 
   expect(await screen.findByText("Страница профиля")).toBeInTheDocument();
-  expect(localStorage.getItem(TOKEN_STORAGE_KEY)).toBe("register-token");
+  // Токен остаётся в httpOnly cookie и не попадает в localStorage.
+  expect(localStorage.getItem("ovm_session")).toBeNull();
 });

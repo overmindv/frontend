@@ -27,6 +27,7 @@ CI (`.github/workflows/ci.yml`) гоняет lint, test:ci и build на каж�
 ## Конфигурация
 
 - `.env` — скопировать из `.env.example`, ключ `VITE_API_URL` (GraphQL endpoint). По умолчанию `http://localhost:8081/graphql`.
+- В dev-режиме Vite проксирует `/graphql` → `http://localhost:8081` через тот же origin (см. `vite.config.ts`), чтобы httpOnly session cookie работала так же, как в проде (nginx). Поэтому `VITE_API_URL` обычно не нужен.
 - Docker: статический Vite-билд под непривилегированным Nginx на порту `3000`, внутренний `/graphql` проксируется в `http://api-gateway:8081/graphql`.
 - GraphQL endpoint один и тот же для всех операций (включая загрузки файлов). frontend не знает URL `tasks`/др. сервисов.
 
@@ -43,7 +44,7 @@ CI (`.github/workflows/ci.yml`) гоняет lint, test:ci и build на каж�
 - `errors.ts` — `getErrorMessage(error)`.
 - Доменные операции вынесены в отдельные модули: `tasks.ts`, `catalog.ts`, `users`-админка (`adminUsers.ts`), `collection.ts` (сбор задач).
 
-**Аутентификация** — JWT хранится в localStorage (`TOKEN_STORAGE_KEY`, `USER_ID_STORAGE_KEY` из `client.ts`, key = `frontend.token` / `frontend.userId`). `AuthContext` (`src/context/AuthContext.tsx`) владеет состоянием и регистрирует обработчик неавторизованности. **error-линк Apollo сам очищает auth при `UNAUTHENTICATED` (extensions.code) или HTTP 401** — не дублируй эту логику в компонентах.
+**Аутентификация** — сессия живёт в httpOnly cookie `ovm_session`, которую ставит сервер в ответ на login/register; браузер шлёт её автоматически (`fetchOptions: { credentials: "include" }` в `client.ts`). **Токен недоступен JS** (защита от XSS) — в localStorage сессии нет, куда бы попасть она не должна. `AuthContext` (`src/context/AuthContext.tsx`) владеет состоянием: восстанавливает сессию через `ME_QUERY` (fetchPolicy `network-only`) на старте, `signIn` строит состояние из ответа мутации, `logout` вызывает `LOGOUT_MUTATION` + `apolloClient.clearStore()`. `AuthProvider` регистрирует обработчик через `setUnauthenticatedHandler` из `client.ts`. **error-линк Apollo сам вызывает logout при `UNAUTHENTICATED` (extensions.code) или HTTP 401** — не дублируй эту логику в компонентах.
 
 **Обработка ошибок** — принцип проекта: пользователь никогда не видит технические детали. `getErrorMessage()` всегда возвращает нейтральное сообщение независимо от типа ошибки (это сознательно, не упрощать). Технические коды живут в GraphQL `extensions.code` и серверных логах. Не выводи пользователю сырые тексты ошибок.
 

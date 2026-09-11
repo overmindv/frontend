@@ -51,3 +51,9 @@ export const UPDATE_USER_MUTATION = gql`
   }
   ${USER_FIELDS}
 `;
+
+export const LOGOUT_MUTATION = gql`
+  mutation Logout {
+    logout
+  }
+`;
