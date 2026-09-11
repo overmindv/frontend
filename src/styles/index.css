@@ -366,7 +366,7 @@ body::before {
 .tag-list input { margin-right: 6px; }
 .tag-list button.status-tag { cursor: pointer; transition: color 140ms ease, border-color 140ms ease, background 140ms ease; }
 .tag-list button.status-tag:hover { color: #d9f4ff; background: #12334a; border-color: var(--accent); }
-.field-hint { margin: 0; padding: 12px 14px; color: var(--muted); background: #091521; border-left: 2px solid #2c536e; font-size: 0.82rem; }
+.field-hint { margin: 0; padding: 12px 14px; color: var(--muted); background: #091521; border-left: 2px solid var(--line-strong); font-size: 0.82rem; }
 
 /* TaskSolveStatusBanner — маркер «решена правильно / неверное / не решалась» и сводка попыток. */
 .task-solve-status {
@@ -1357,35 +1357,39 @@ body::before { display: none; }
    Карточки 12px, кнопки/инпуты 8px, теги/пилюли 9999px.
    ============================================================ */
 
-/* Тёмная тема — чёрная с голубым */
+/* Тёмная тема — «вечерний лес»: тёплый тёмно-зелёный вместо сине-чёрного */
 :root {
-  --bg: #0a0e13;
-  --surface: #11161d;
-  --surface-raised: #171f29;
-  --surface-blue: #0e1824;
-  --line: #1f2832;
-  --line-strong: #33404e;
-  --text: #eaf4fb;
-  --muted: #8da2b7;
-  --accent: #3ca0ff;
-  --accent-strong: #8ecbff;
-  --accent-soft: rgba(60, 160, 255, 0.14);
-  --header-bg: rgba(10, 14, 19, 0.86);
-  --input: #0d131a;
+  --bg: #0c100c;
+  --surface: #131812;
+  --surface-raised: #1a2018;
+  --surface-blue: #142019;
+  --line: #222a20;
+  --line-strong: #35452f;
+  --text: #eef1e7;
+  --muted: #99a18f;
+  --accent: #6fbf8e;
+  --accent-strong: #a2d8ac;
+  --accent-soft: rgba(111, 191, 142, 0.15);
+  --header-bg: rgba(12, 16, 12, 0.86);
+  --input: #0e130e;
   --shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  --danger: #e0707a;
+  --success: #57bd7f;
+  --warning: #dfa75f;
   --radius-cards: 12px;
   --radius-buttons: 8px;
   --radius-inputs: 8px;
   --radius-tags: 9999px;
 
   /* Reference-токены DESIGN (используются в особых местах) */
-  --color-midnight-ink: #0a0f16;
-  --color-signal-blue: #3ca0ff;
-  --color-sky-tint: #8ecbff;
-  --color-royal-violet: #2537b1;
-  --color-periwinkle: #455dd3;
-  --color-cerulean: #4aa5ff;
-  --color-paper-white: #f6f5f4;
+  --font-hand: "Neucha", "Marck Script", "Caveat", cursive;
+  --color-midnight-ink: #0a120c;
+  --color-signal-blue: #6fbf8e;
+  --color-sky-tint: #9fd6ab;
+  --color-royal-violet: #2c5c40;
+  --color-periwinkle: #4a7c59;
+  --color-cerulean: #6fbf8e;
+  --color-paper-white: #f4efe6;
   --color-pure-white: #ffffff;
   --color-onyx: #000000;
   --color-graphite: #0b0b0b;
@@ -1394,34 +1398,36 @@ body::before { display: none; }
   --color-smoke: #c6c6c5;
   --color-faint-line: #dddddd;
   --color-charcoal: #31302e;
+  --color-amber: #d9a45c;
 
   background: var(--bg);
 }
 
 body { background: var(--bg); font-feature-settings: "lnum", "locl" 0; }
 
-/* Тёплая бумага — светлая тема */
+/* Тёплая бумага — светлая тема («берёзовая бумага», акцент — лесной мох) */
 :root[data-theme="light"] {
-  --bg: #f6f5f4;
-  --surface: #ffffff;
-  --surface-raised: #f8f7f6;
-  --surface-blue: #f2f6ff;
-  --line: #dddddd;
-  --line-strong: #c6c6c5;
-  --text: #000000;
-  --muted: #615d59;
-  --accent: #0075de;
-  --accent-strong: #005fbc;
-  --accent-soft: #f2f9ff;
-  --header-bg: rgba(246, 245, 244, 0.92);
-  --input: #ffffff;
+  --bg: #f4efe5;
+  --surface: #fffdf6;
+  --surface-raised: #f7f1e6;
+  --surface-blue: #edf1e4;
+  --line: #e3dccb;
+  --line-strong: #c8bba2;
+  --text: #271f12;
+  --muted: #756b5a;
+  --accent: #3f7d57;
+  --accent-strong: #2d5c3e;
+  --accent-soft: #e9f1e4;
+  --header-bg: rgba(244, 239, 229, 0.92);
+  --input: #fffdf6;
   --shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.18);
-  --danger: #b4233d;
-  --success: #157a5d;
-  --warning: #9a6814;
-  --color-signal-blue: #0075de;
-  --color-cerulean: #0a86ff;
-  background: #f6f5f4;
+  --danger: #b0453f;
+  --success: #2f7d52;
+  --warning: #a9771f;
+  --color-signal-blue: #3f7d57;
+  --color-cerulean: #4c8f63;
+  --color-amber: #b07f33;
+  background: #f4efe5;
 }
 
 /* Плавность по умолчанию */
@@ -1431,6 +1437,22 @@ body { background: var(--bg); font-feature-settings: "lnum", "locl" 0; }
 /* ---- Шапка ---- */
 .site-header { box-shadow: 0 1px 0 var(--line); }
 .brand__mark { color: #fff; background: var(--color-signal-blue, #0075de); box-shadow: none; }
+
+/* ---- Рукописный акцент («шёпот», а не UI) ----
+   Используется скупо: кикеры, подписи hero и точечные смысловые слова.
+   Не применяется к телу, нав-ссылкам, кнопкам и формам. */
+.text-hand,
+.hero__kicker,
+.section-kicker,
+.eyebrow {
+  font-family: var(--font-hand, "Neucha", cursive) !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+.hero__kicker { font-size: 1.22rem !important; padding: 7px 16px; }
+.section-kicker { font-size: 0.92rem !important; line-height: 1.2; }
+.eyebrow { font-size: 0.84rem !important; }
 .main-nav a:hover { color: var(--text); background: var(--accent-soft); }
 .main-nav a.active { color: var(--accent-strong); background: var(--accent-soft); }
 
@@ -1450,10 +1472,10 @@ body { background: var(--bg); font-feature-settings: "lnum", "locl" 0; }
 /* ---- Hero главной: midnight-сцена в ОБЕИХ темах ---- */
 .hero { position: relative; overflow: hidden; display: grid; place-items: center; padding: clamp(48px, 7vw, 96px) 0 clamp(34px, 5vw, 64px); border-radius: var(--radius-cards, 12px); text-align: center; background: var(--color-midnight-ink, #02093a); }
 .aurora { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-.aurora i { position: absolute; width: 46vw; height: 46vw; min-width: 320px; min-height: 320px; border-radius: 50%; filter: blur(70px); opacity: .5; animation: aurora-float 18s ease-in-out infinite; }
-.aurora i:nth-child(1) { top: -18%; left: -10%; background: radial-gradient(circle at 30% 30%, rgba(60, 160, 255, .5), transparent 60%); }
-.aurora i:nth-child(2) { top: 10%; right: -14%; background: radial-gradient(circle at 70% 40%, rgba(0, 117, 222, .5), transparent 60%); animation-delay: -6s; }
-.aurora i:nth-child(3) { bottom: -30%; left: 30%; background: radial-gradient(circle at 50% 50%, rgba(142, 203, 255, .4), transparent 62%); animation-delay: -12s; }
+.aurora i { position: absolute; width: 46vw; height: 46vw; min-width: 320px; min-height: 320px; border-radius: 50%; filter: blur(70px); opacity: .45; animation: aurora-float 18s ease-in-out infinite; }
+.aurora i:nth-child(1) { top: -18%; left: -10%; background: radial-gradient(circle at 30% 30%, rgba(111, 191, 142, .42), transparent 60%); }
+.aurora i:nth-child(2) { top: 10%; right: -14%; background: radial-gradient(circle at 70% 40%, rgba(217, 164, 92, .30), transparent 60%); animation-delay: -6s; }
+.aurora i:nth-child(3) { bottom: -30%; left: 30%; background: radial-gradient(circle at 50% 50%, rgba(159, 214, 171, .36), transparent 62%); animation-delay: -12s; }
 @keyframes aurora-float { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(4%, 6%, 0) scale(1.08); } }
 
 .hero__inner { position: relative; z-index: 1; display: grid; gap: 26px; justify-items: center; }
@@ -1486,7 +1508,7 @@ body { background: var(--bg); font-feature-settings: "lnum", "locl" 0; }
 .recommendation-row:hover > svg { transform: translateX(3px); }
 .difficulty-dot { display: inline-block; width: 7px; height: 7px; margin: 0 4px; border-radius: 50%; vertical-align: 1px; }
 .difficulty-dot[data-difficulty="easy"] { background: #6fdc9b; box-shadow: 0 0 0 4px rgba(111, 220, 155, .12); }
-.difficulty-dot[data-difficulty="medium"] { background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent); }
+.difficulty-dot[data-difficulty="medium"] { background: var(--color-amber, #d9a45c); box-shadow: 0 0 0 4px rgba(217, 164, 92, .14); }
 .difficulty-dot[data-difficulty="hard"] { background: #ff8291; box-shadow: 0 0 0 4px rgba(255, 130, 145, .12); }
 
 /* ---- Карточки каталога и задач ---- */
@@ -1552,7 +1574,7 @@ body { background: var(--bg); font-feature-settings: "lnum", "locl" 0; }
 
 /* Hero: главная CTA доминирует, вторичная — утончённая */
 .hero__cta { gap: 16px; margin-top: 14px; }
-.hero__cta .button--primary { min-width: 250px; box-shadow: 0 14px 30px -14px rgba(60, 160, 255, 0.55); }
+.hero__cta .button--primary { min-width: 250px; box-shadow: 0 14px 30px -14px rgba(111, 191, 142, 0.5); }
 .hero__cta .button--ghost { min-height: 42px; padding: 0 6px; color: rgba(255, 255, 255, 0.82); border-color: transparent; font-weight: 500; }
 .hero__cta .button--ghost:hover:not(:disabled) { color: #fff; background: rgba(255, 255, 255, 0.08); }
 
