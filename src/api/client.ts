@@ -1,14 +1,10 @@
 import {
   ApolloClient,
-  ApolloLink,
   InMemoryCache,
   from,
 } from "@apollo/client";
 import { onError } from "@apollo/client/link/error";
 import createUploadLink from "apollo-upload-client/createUploadLink.mjs";
-
-export const TOKEN_STORAGE_KEY = "frontend.token";
-export const USER_ID_STORAGE_KEY = "frontend.userId";
 
 let unauthenticatedHandler: () => void = () => undefined;
 
@@ -19,22 +15,8 @@ export function setUnauthenticatedHandler(handler: () => void) {
   };
 }
 
-export function clearStoredAuth() {
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
-  localStorage.removeItem(USER_ID_STORAGE_KEY);
-}
-
-const authLink = new ApolloLink((operation, forward) => {
-  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
-  operation.setContext(({ headers = {} }) => ({
-    headers: {
-      ...headers,
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  }));
-  return forward(operation);
-});
-
+// Сессия живёт в httpOnly cookie (`ovm_session`), которая приходит с ответом login/register
+// и отправляется браузером автоматически. Токен недоступен JS — это защищает от кражи через XSS.
 const errorLink = onError(({ graphQLErrors, networkError }) => {
   const graphUnauthenticated = graphQLErrors?.some(
     (error) => error.extensions?.code === "UNAUTHENTICATED",
@@ -45,17 +27,17 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
       : undefined;
 
   if (graphUnauthenticated || statusCode === 401) {
-    clearStoredAuth();
     unauthenticatedHandler();
   }
 });
 
 const uploadLink = createUploadLink({
-  uri: import.meta.env.VITE_API_URL ?? "http://localhost:8081/graphql",
+  uri: import.meta.env.VITE_API_URL ?? "/graphql",
+  fetchOptions: { credentials: "include" },
 });
 
 export const apolloClient = new ApolloClient({
-  link: from([errorLink, authLink, uploadLink]),
+  link: from([errorLink, uploadLink]),
   cache: new InMemoryCache({
     typePolicies: {
       User: { keyFields: ["id"] },

@@ -7,89 +7,84 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
+import { useMutation, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
-import {
-  TOKEN_STORAGE_KEY,
-  USER_ID_STORAGE_KEY,
-  apolloClient,
-  clearStoredAuth,
-  setUnauthenticatedHandler,
-} from "../api/client";
+import { apolloClient, setUnauthenticatedHandler } from "../api/client";
+import { LOGOUT_MUTATION } from "../api/mutations";
+import { ME_QUERY } from "../api/queries";
 import type { AuthPayload } from "../api/types";
 
+interface AuthUser {
+  id: string;
+  isAdmin: boolean;
+  isSuperuser: boolean;
+}
+
 interface AuthContextValue {
-  token: string | null;
   userId: string | null;
   isAdmin: boolean;
   isAuthenticated: boolean;
+  isLoading: boolean;
   signIn: (payload: AuthPayload) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function readStoredValue(key: string) {
-  return localStorage.getItem(key);
+interface MeData {
+  me: AuthUser | null;
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const navigate = useNavigate();
-  const [token, setToken] = useState(() => readStoredValue(TOKEN_STORAGE_KEY));
-  const [userId, setUserId] = useState(() => readStoredValue(USER_ID_STORAGE_KEY));
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const { data: meData, loading: meLoading } = useQuery<MeData>(ME_QUERY, {
+    fetchPolicy: "network-only",
+  });
+  const [logoutMutation] = useMutation(LOGOUT_MUTATION);
+
+  // Восстанавливаем сессию по httpOnly cookie при загрузке страницы.
+  useEffect(() => {
+    const restored = meData?.me ?? null;
+    setUser(
+      restored
+        ? { id: restored.id, isAdmin: restored.isAdmin, isSuperuser: restored.isSuperuser }
+        : null,
+    );
+  }, [meData]);
 
   const logout = useCallback(() => {
-    clearStoredAuth();
-    setToken(null);
-    setUserId(null);
+    setUser(null);
+    // Уведомляем сервер, чтобы он очистил httpOnly cookie.
+    void logoutMutation().catch(() => undefined);
     void apolloClient.clearStore();
     navigate("/login", { replace: true });
-  }, [navigate]);
+  }, [logoutMutation, navigate]);
 
   useEffect(() => setUnauthenticatedHandler(logout), [logout]);
 
-  useEffect(() => {
-    if ((token && !userId) || (!token && userId)) {
-      logout();
-    }
-  }, [logout, token, userId]);
-
   const signIn = useCallback((payload: AuthPayload) => {
-    localStorage.setItem(TOKEN_STORAGE_KEY, payload.token);
-    localStorage.setItem(USER_ID_STORAGE_KEY, payload.user.id);
-    setToken(payload.token);
-    setUserId(payload.user.id);
+    // Токен уже в httpOnly cookie, выданной сервером; состояние строим из ответа мутации.
+    setUser({
+      id: payload.user.id,
+      isAdmin: payload.user.isAdmin,
+      isSuperuser: payload.user.isSuperuser,
+    });
   }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      token,
-      userId,
-      isAdmin: isAdminToken(token),
-      isAuthenticated: Boolean(token && userId),
+      userId: user?.id ?? null,
+      isAdmin: Boolean(user?.isAdmin || user?.isSuperuser),
+      isAuthenticated: user != null,
+      isLoading: user == null && meLoading,
       signIn,
       logout,
     }),
-    [logout, signIn, token, userId],
+    [logout, meLoading, signIn, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-function isAdminToken(token: string | null) {
-  if (!token) {
-    return false;
-  }
-
-  try {
-    const [, payload] = token.split(".");
-    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
-    const decoded = JSON.parse(window.atob(padded)) as { roles?: string[] };
-
-    return decoded.roles?.some((role) => ["admin", "superuser"].includes(role.toLowerCase())) ?? false;
-  } catch {
-    return false;
-  }
 }
 
 export function useAuth() {

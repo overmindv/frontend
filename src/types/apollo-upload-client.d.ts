@@ -3,6 +3,8 @@ declare module "apollo-upload-client/createUploadLink.mjs" {
 
   interface CreateUploadLinkOptions {
     uri?: string;
+    fetchOptions?: RequestInit;
+    credentials?: string;
   }
 
   export default function createUploadLink(

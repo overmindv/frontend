@@ -4,8 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { GET_USER_QUERY } from "../../api/queries";
 import { UPDATE_USER_MUTATION } from "../../api/mutations";
-import { TOKEN_STORAGE_KEY, USER_ID_STORAGE_KEY } from "../../api/client";
 import { AuthProvider } from "../../context/AuthContext";
+import { meMock } from "../../test/authMocks";
 import { Profile } from "./Profile";
 
 const originalUser = {
@@ -25,13 +25,12 @@ const originalUser = {
 };
 
 test("загружает и обновляет профиль", async () => {
-  localStorage.setItem(TOKEN_STORAGE_KEY, "jwt");
-  localStorage.setItem(USER_ID_STORAGE_KEY, "user-id");
   const user = userEvent.setup();
   render(
     <MockedProvider
       addTypename={false}
       mocks={[
+        meMock(),
         {
           request: { query: GET_USER_QUERY, variables: { id: "user-id" } },
           result: { data: { getUser: originalUser } },

@@ -3,8 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { ADMIN_USERS_QUERY, SET_USER_ADMIN } from "../../api/adminUsers";
-import { TOKEN_STORAGE_KEY, USER_ID_STORAGE_KEY } from "../../api/client";
 import { AuthProvider } from "../../context/AuthContext";
+import { meMock } from "../../test/authMocks";
 import { AdminUsersPage } from "./UsersPage";
 
 const student = {
@@ -23,24 +23,7 @@ const student = {
   updatedAt: "2026-07-18T10:00:00Z",
 };
 
-function adminToken() {
-  const header = base64URL({ alg: "HS256", typ: "JWT" });
-  const payload = base64URL({ sub: "admin-id", roles: ["admin"] });
-
-  return `${header}.${payload}.signature`;
-}
-
-function base64URL(value: unknown) {
-  return window
-    .btoa(JSON.stringify(value))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
 test("администратор назначает обычного пользователя администратором", async () => {
-  localStorage.setItem(TOKEN_STORAGE_KEY, adminToken());
-  localStorage.setItem(USER_ID_STORAGE_KEY, "admin-id");
   const user = userEvent.setup();
   vi.spyOn(window, "confirm").mockReturnValue(true);
 
@@ -48,6 +31,7 @@ test("администратор назначает обычного польз�
     <MockedProvider
       addTypename={false}
       mocks={[
+        meMock({ id: "admin-id", isAdmin: true, isSuperuser: false }),
         {
           request: { query: ADMIN_USERS_QUERY, variables: { search: "student" } },
           result: { data: { users: [student] } },
@@ -93,7 +77,8 @@ test("администратор назначает обычного польз�
     </MockedProvider>,
   );
 
-  await user.type(screen.getByRole("textbox", { name: "Username или email" }), "student");
+  const searchInput = await screen.findByRole("textbox", { name: /Username или email/ });
+  await user.type(searchInput, "student");
   await user.click(screen.getByRole("button", { name: "Найти пользователя" }));
   expect(await screen.findByText("@student")).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "Действия с пользователем" }));

@@ -3,8 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { LOGIN_MUTATION } from "../../api/mutations";
-import { TOKEN_STORAGE_KEY, USER_ID_STORAGE_KEY } from "../../api/client";
 import { AuthProvider } from "../../context/AuthContext";
+import { meMock } from "../../test/authMocks";
 import { Login } from "./Login";
 
 const loginVariables = {
@@ -26,9 +26,10 @@ function renderLogin(mocks: MockedResponse[]) {
   );
 }
 
-test("успешно входит, сохраняет JWT и открывает профиль", async () => {
+test("успешно входит и открывает профиль (токен остаётся в httpOnly cookie, в localStorage его нет)", async () => {
   const user = userEvent.setup();
   renderLogin([
+    meMock(null),
     {
       request: { query: LOGIN_MUTATION, variables: loginVariables },
       result: {
@@ -62,13 +63,14 @@ test("успешно входит, сохраняет JWT и открывает 
   await user.click(screen.getByRole("button", { name: "Войти" }));
 
   expect(await screen.findByText("Страница профиля")).toBeInTheDocument();
-  expect(localStorage.getItem(TOKEN_STORAGE_KEY)).toBe("jwt-token");
-  expect(localStorage.getItem(USER_ID_STORAGE_KEY)).toBe("user-id");
+  // Токен недоступен JS: в localStorage ничего не сохраняется.
+  expect(localStorage.getItem("ovm_session")).toBeNull();
 });
 
 test("показывает ошибку входа", async () => {
   const user = userEvent.setup();
   renderLogin([
+    meMock(null),
     {
       request: { query: LOGIN_MUTATION, variables: loginVariables },
       error: new Error("invalid credentials"),

@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
-import { TOKEN_STORAGE_KEY, USER_ID_STORAGE_KEY } from "../../api/client";
+import { meMock } from "../../test/authMocks";
 import {
   IT_CODE_SUBMISSION_QUERY,
   IT_TASK_QUERY,
@@ -38,8 +38,6 @@ const task = {
 
 // TestTaskSolveFlow проверяет выбор ответа, submit и уведомление о новой версии.
 test("пользователь решает открытую версию теста", async () => {
-  localStorage.setItem(TOKEN_STORAGE_KEY, "token");
-  localStorage.setItem(USER_ID_STORAGE_KEY, "user-id");
   vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("11111111-1111-4111-8111-111111111111");
   const user = userEvent.setup();
 
@@ -47,6 +45,7 @@ test("пользователь решает открытую версию тес
     <MockedProvider
       addTypename={false}
       mocks={[
+        meMock(),
         {
           request: { query: IT_TASK_QUERY, variables: { id: "task-id" } },
           result: { data: { itTask: task } },
@@ -107,8 +106,6 @@ test("пользователь решает открытую версию тес
 
 // TestProgrammingTaskUpload проверяет выбор файла и отображение результата sandbox.
 test("пользователь отправляет файл programming-задачи", async () => {
-  localStorage.setItem(TOKEN_STORAGE_KEY, "token");
-  localStorage.setItem(USER_ID_STORAGE_KEY, "user-id");
   vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("22222222-2222-4222-8222-222222222222");
 
   const user = userEvent.setup();
@@ -120,6 +117,7 @@ test("пользователь отправляет файл programming-зад�
     <MockedProvider
       addTypename={false}
       mocks={[
+        meMock(),
         {
           request: { query: IT_TASK_QUERY, variables: { id: "programming-id" } },
           result: {
@@ -239,9 +237,6 @@ test("карточка задачи целиком ведёт на страни�
 
 // TestCodeSubmissionDetail показывает сохранённый результат программной попытки.
 test("страница результата кодового решения показывает вердикт и исходный код", async () => {
-  localStorage.setItem(TOKEN_STORAGE_KEY, "token");
-  localStorage.setItem(USER_ID_STORAGE_KEY, "user-id");
-
   const programmingTask = {
     ...task,
     id: "programming-id",
@@ -259,6 +254,7 @@ test("страница результата кодового решения по
   render(
     <MockedProvider
       mocks={[
+        meMock(),
         {
           request: { query: IT_CODE_SUBMISSION_QUERY, variables: { id: "code-submission-id" } },
           result: {
@@ -321,12 +317,10 @@ test("страница результата кодового решения по
 
 // TestTaskSolveStatusBanner показывает маркер «решена правильно» при повторном открытии.
 test("на странице задачи показывается, что задача решена правильно", async () => {
-  localStorage.setItem(TOKEN_STORAGE_KEY, "token");
-  localStorage.setItem(USER_ID_STORAGE_KEY, "user-id");
-
   render(
     <MockedProvider
       mocks={[
+        meMock(),
         { request: { query: IT_TASK_QUERY, variables: { id: "task-id" } }, result: { data: { itTask: task } } },
         {
           request: { query: MY_IT_SUBMISSIONS_QUERY, variables: { taskId: "task-id", pagination: { limit: 100, offset: 0 } } },

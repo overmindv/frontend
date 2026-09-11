@@ -3,9 +3,9 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
-import { TOKEN_STORAGE_KEY, USER_ID_STORAGE_KEY } from "../../api/client";
 import { IT_TASK_QUERY, SUBMIT_IT_TASK_CODE } from "../../api/tasks";
 import { AuthProvider } from "../../context/AuthContext";
+import { meMock } from "../../test/authMocks";
 import { TaskSolvePage } from "./TasksPages";
 
 const programmingTask = {
@@ -79,8 +79,6 @@ const completedCodeSubmission = {
 
 // renderSolve монтирует TaskSolvePage в окружении, аналогичном TasksPages.test.tsx.
 function renderSolve() {
-  localStorage.setItem(TOKEN_STORAGE_KEY, "token");
-  localStorage.setItem(USER_ID_STORAGE_KEY, "user-id");
   vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("33333333-3333-4333-8333-333333333333");
 
   const sourceFile = new File(["print(4)"], "solution.py", { type: "text/x-python" });
@@ -92,6 +90,7 @@ function renderSolve() {
       <MockedProvider
         addTypename={false}
         mocks={[
+          meMock(),
           {
             request: { query: IT_TASK_QUERY, variables: { id: "programming-id" } },
             result: { data: { itTask: programmingTask } },
