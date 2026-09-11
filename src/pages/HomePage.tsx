@@ -32,7 +32,7 @@ export function HomePage() {
         <Reveal as="header" className="hero__heading">
           <span className="hero__kicker"><Sparkles size={15} /> Overmindv · практика в собственном темпе</span>
           <h1>Продолжайте <span className="gradient-text">практику</span><br />каждый день</h1>
-          <p>Тёплое место, где вы решаете задачи по программированию, закрепляете теорию и растёте помаленьку — без давления и жёстких сроков.</p>
+          <p>Тёплое место, где вы решаете задачи по программированию, закрепляете теорию и <span className="text-hand">растёте помаленьку</span> — без давления и жёстких сроков.</p>
           <div className="hero__cta">
             <Link className="button button--primary button--lg" to="/tasks">Начать практику <ArrowRight size={18} /></Link>
             <Link className="button button--ghost button--lg" to="/universities">Смотреть каталог</Link>
