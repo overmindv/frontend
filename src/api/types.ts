@@ -1,3 +1,9 @@
+export interface Avatar {
+  fileId: string;
+  smallUrl: string;
+  mediumUrl: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -6,6 +12,7 @@ export interface User {
   lastName: string;
   birthDate: string | null;
   phone: string | null;
+  avatar: Avatar | null;
   roles: string[];
   isAdmin: boolean;
   isSuperuser: boolean;
@@ -41,4 +48,51 @@ export interface UpdateUserInput {
   birthDate?: string;
   clearBirthDate?: boolean;
   phone?: string;
+}
+
+export interface CreateMediaUploadInput {
+  originalName: string;
+  contentType: string;
+  sizeBytes: number;
+  checksumSha256: string;
+  purpose: "avatar" | "catalog_logo" | "content_image" | "attachment" | "archive";
+  visibility: "public" | "private";
+}
+
+export interface MediaFormField {
+  name: string;
+  value: string;
+}
+
+export interface MediaUpload {
+  fileId: string;
+  mode: "single" | "multipart";
+  url: string;
+  fields: MediaFormField[];
+  headers: MediaFormField[];
+  multipartUploadId: string;
+  partSize: number;
+  expiresAt: string;
+}
+
+export interface CompleteMediaUploadInput {
+  fileId: string;
+  parts: { partNumber: number; etag: string }[];
+}
+
+export interface MediaFile {
+  id: string;
+  ownerUserId: string;
+  purpose: string;
+  visibility: string;
+  originalName: string;
+  declaredContentType: string;
+  detectedContentType: string;
+  sizeBytes: number;
+  status: "pending_upload" | "quarantined" | "processing" | "ready" | "rejected" | "deleted";
+  failureCode: string;
+  publicUrl: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
 }

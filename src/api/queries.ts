@@ -21,3 +21,13 @@ export const GET_USER_QUERY = gql`
   }
   ${USER_FIELDS}
 `;
+
+export const MEDIA_FILE_QUERY = gql`
+  query MediaFile($id: ID!) {
+    mediaFile(id: $id) {
+      id
+      status
+      purpose
+    }
+  }
+`;

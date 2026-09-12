@@ -1,5 +1,6 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "@apollo/client";
+import { uploadAvatar } from "../../api/media";
 import { GET_USER_QUERY } from "../../api/queries";
 import { UPDATE_USER_MUTATION } from "../../api/mutations";
 import { getErrorMessage } from "../../api/errors";
@@ -47,14 +48,14 @@ export function Profile() {
   const [form, setForm] = useState<ProfileForm>(emptyForm);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const { data, loading, error } = useQuery<GetUserData, { id: string }>(
-    GET_USER_QUERY,
-    {
-      variables: { id: userId ?? "" },
-      skip: !userId,
-      fetchPolicy: "cache-and-network",
-    },
-  );
+  const { data, loading, error, refetch: refetchUser } = useQuery<
+    GetUserData,
+    { id: string }
+  >(GET_USER_QUERY, {
+    variables: { id: userId ?? "" },
+    skip: !userId,
+    fetchPolicy: "cache-and-network",
+  });
   const [updateUser, { loading: saving }] = useMutation<
     UpdateUserData,
     { id: string; input: UpdateUserInput }
@@ -62,9 +63,43 @@ export function Profile() {
 
   const user = data?.getUser;
 
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
   useEffect(() => {
     if (user) setForm(userToForm(user));
   }, [user]);
+
+  const handleAvatarChange = (file: File | null) => {
+    if (!file) return;
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    setAvatarFile(file);
+    setAvatarError(null);
+    setSuccessMessage(null);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
+
+  const handleAvatarSubmit = async () => {
+    if (!avatarFile) return;
+    setUploadingAvatar(true);
+    setAvatarError(null);
+    setSuccessMessage(null);
+    try {
+      await uploadAvatar(avatarFile);
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+      setAvatarPreview(null);
+      setAvatarFile(null);
+      await refetchUser();
+      setSuccessMessage("Аватар сохранён.");
+    } catch (avatarSubmitError) {
+      setAvatarError(getErrorMessage(avatarSubmitError));
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const updateField = (field: keyof ProfileForm, value: string) => {
     setSuccessMessage(null);
@@ -117,9 +152,37 @@ export function Profile() {
   return (
     <section className="profile-layout">
       <aside className="profile-summary">
-        <div className="avatar" aria-hidden="true">
-          {(user.firstName || user.username).slice(0, 1).toUpperCase()}
+        {avatarPreview || user.avatar?.smallUrl || user.avatar?.mediumUrl ? (
+          <img
+            className="avatar avatar-image"
+            src={avatarPreview || user.avatar?.mediumUrl || user.avatar?.smallUrl || ""}
+            alt="Аватар"
+          />
+        ) : (
+          <div className="avatar" aria-hidden="true">
+            {(user.firstName || user.username).slice(0, 1).toUpperCase()}
+          </div>
+        )}
+
+        <div className="avatar-upload">
+          <input
+            ref={avatarInputRef}
+            accept="image/jpeg,image/png,image/webp"
+            className="avatar-upload__input"
+            type="file"
+            onChange={(event) => handleAvatarChange(event.target.files?.[0] ?? null)}
+          />
+          <button className="button button--ghost button--small" onClick={() => avatarInputRef.current?.click()} type="button">
+            {avatarPreview ? "Выбрать другой файл" : "Загрузить аватар"}
+          </button>
+          {avatarFile && (
+            <button className="button button--primary button--small" disabled={uploadingAvatar} onClick={handleAvatarSubmit} type="button">
+              {uploadingAvatar ? <Spinner label="Сохраняем…" /> : "Сохранить аватар"}
+            </button>
+          )}
+          {avatarError && <ErrorMessage message={avatarError} />}
         </div>
+
         <div>
           <span className="eyebrow">Ваш аккаунт</span>
           <h1>{[user.firstName, user.lastName].filter(Boolean).join(" ") || user.username}</h1>
