@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Bell, BookOpen, ChevronDown, CircleUserRound, Library, LogIn, Menu, Moon, Search, Settings, Shield, Sun, X } from "lucide-react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 
@@ -18,6 +18,17 @@ export function Header() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const location = useLocation();
+
+  // Закрываем все меню и сбрасываем поиск при смене маршрута: попапы не должны
+  // переживать навигацию (клик по ссылке меню, back/forward, Enter в поиске,
+  // logout и повторный вход в другой аккаунт).
+  useEffect(() => {
+    setMobileOpen(false);
+    setAdminOpen(false);
+    setProfileOpen(false);
+    setQuery("");
+  }, [location.pathname, location.search]);
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
