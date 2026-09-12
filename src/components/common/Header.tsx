@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { BookOpen, ChevronDown, CircleUserRound, Library, LogIn, Menu, Moon, Search, Settings, Shield, Sun, X } from "lucide-react";
+import { Bell, BookOpen, ChevronDown, CircleUserRound, Library, LogIn, Menu, Moon, Search, Settings, Shield, Sun, X } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -41,6 +41,7 @@ export function Header() {
         </nav>
         <form className="global-search" onSubmit={submitSearch} role="search"><Search size={17} /><input aria-label="Глобальный поиск" onChange={(event) => setQuery(event.target.value)} placeholder="Поиск" value={query} /><kbd>⌘ K</kbd>{query.trim() && <div className="global-search__suggestions" aria-label="Варианты поиска">{searchTargets.map(([to, label, description]) => <Link key={to} onClick={() => setQuery("")} to={`${to}?search=${encodeURIComponent(query.trim())}`}><Search size={15} /><span><strong>Искать «{query.trim()}» в разделе «{label}»</strong><small>{description}</small></span></Link>)}<p>Полный поиск по всем данным появится после подключения серверного индекса.</p></div>}</form>
         <div className="header-actions">
+          {isAdmin && <Link className="header-icon" to="/notifications" aria-label="Уведомления" title="Уведомления"><Bell size={18} /></Link>}
           <button className="header-icon" onClick={cycleTheme} title={`Тема: ${preference}`} type="button" aria-label="Переключить тему">{resolvedTheme === "dark" ? <Moon size={18} /> : <Sun size={18} />}</button>
           {isAdmin && <div className="header-menu"><button className="header-action" onClick={() => setAdminOpen((value) => !value)} type="button"><Shield size={17} /> Админ <ChevronDown size={14} /></button>{adminOpen && <AdminMenu close={() => setAdminOpen(false)} />}</div>}
           {isAuthenticated ? <div className="header-menu"><button className="header-icon" onClick={() => setProfileOpen((value) => !value)} aria-label="Меню профиля" type="button"><CircleUserRound size={21} /></button>{profileOpen && <div className="popover-menu popover-menu--right"><Link onClick={() => setProfileOpen(false)} to="/profile"><CircleUserRound size={16} /> Профиль</Link><Link onClick={() => setProfileOpen(false)} to="/profile/settings"><Settings size={16} /> Настройки</Link><button onClick={logout} type="button"><LogIn size={16} /> Выйти</button></div>}</div> : <Link className="header-action" to="/login"><LogIn size={17} /> Войти</Link>}

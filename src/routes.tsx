@@ -10,6 +10,7 @@ import { AdminUsersPage } from "./pages/admin/UsersPage";
 import { CandidateEditorPage, CollectedTasksPage } from "./pages/admin/CollectedTasksPage";
 import { CodeSubmissionDetailPage, SubmissionDetailPage, SubmissionHistoryPage, TaskSolvePage, TasksPage } from "./pages/tasks/TasksPages";
 import { HomePage } from "./pages/HomePage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { CatalogBrowsePage, CatalogDetailPage } from "./pages/CatalogBrowsePage";
 
 export function AppRoutes() {
@@ -31,6 +32,7 @@ export function AppRoutes() {
       <Route path="/history" element={<PrivateRoute><SubmissionHistoryPage /></PrivateRoute>} />
       <Route path="/history/:id" element={<PrivateRoute><SubmissionDetailPage /></PrivateRoute>} />
       <Route path="/code-submission/:id" element={<PrivateRoute><CodeSubmissionDetailPage /></PrivateRoute>} />
+      <Route path="/notifications" element={<PrivateRoute><NotificationsPage /></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
       <Route path="/profile/settings" element={<PrivateRoute><ProfileSettingsPage /></PrivateRoute>} />
       <Route path="/users/:id" element={<PrivateRoute><PublicUserProfilePage /></PrivateRoute>} />
