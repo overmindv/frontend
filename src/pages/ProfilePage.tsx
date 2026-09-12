@@ -52,7 +52,14 @@ function UserProfile({ userID, own }: { userID: string; own: boolean }) {
   return <main className="page-shell user-profile-page">
     <section className="profile-hero">
       <Reveal as="aside" className="profile-identity">
-        <div className="profile-avatar"><span>{displayName.slice(0, 1).toUpperCase()}</span><small>С нами с {formatDate(profile.createdAt)}</small></div>
+        <div className="profile-avatar">
+          {profile.avatar?.smallUrl || profile.avatar?.mediumUrl ? (
+            <img className="profile-avatar-img" src={profile.avatar.mediumUrl || profile.avatar.smallUrl} alt={`Аватар ${displayName}`} />
+          ) : (
+            <span>{displayName.slice(0, 1).toUpperCase()}</span>
+          )}
+          <small>С нами с {formatDate(profile.createdAt)}</small>
+        </div>
         <dl>
           <div><dt>Роль</dt><dd><span className="role-badge">{roleLabel}</span></dd></div>
           <div><dt>На платформе</dt><dd>с {formatDate(profile.createdAt)}</dd></div>
