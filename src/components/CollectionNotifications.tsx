@@ -19,31 +19,45 @@ export function CollectionNotifications() {
     fetchPolicy: "network-only",
   });
   const [acknowledge] = useMutation(ACKNOWLEDGE_COLLECTION_JOB);
+  // Локально скрытые, но НЕ прочитанные уведомления. Прочитанным становится только то,
+  // на которое кликнули (переход к деталям); остальные на время сессии просто прячем.
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => new Set());
   const jobs = data?.taskCollectionJobs.items ?? [];
   if (!isAdmin || jobs.length === 0) return null;
 
-  const close = async (id: string) => {
+  const markRead = async (id: string) => {
     try {
       await acknowledge({ variables: { id } });
     } catch {
-      // Уведомление просто останется видимым, ничего не роняем.
+      // Уведомление просто останется непрочитанным, ничего не роняем.
     }
     await refetch();
   };
 
-  return <aside className="toast-stack" aria-live="polite">{jobs.map((job) => <CollectionToast key={job.id} job={job} onClose={() => void close(job.id)} />)}</aside>;
+  const dismiss = (id: string) => setDismissedIds((current) => {
+    const next = new Set(current);
+    next.add(id);
+    return next;
+  });
+
+  const visibleJobs = jobs.filter((job) => !dismissedIds.has(job.id));
+  if (visibleJobs.length === 0) return null;
+
+  return <aside className="toast-stack" aria-live="polite">{visibleJobs.map((job) => <CollectionToast key={job.id} job={job} onOpen={() => void markRead(job.id)} onDismiss={() => dismiss(job.id)} />)}</aside>;
 }
 
 // CollectionToast сам управляет таймером автозакрытия и плавным исчезанием:
-// — через 5 секунд без наведения уведомление плавно гаснет;
+// — через 5 секунд без наведения уведомление плавно гаснет и скрывается локально (без прочтения);
 // — наведение возвращает его на 100% и сбрасывает отсчёт;
-// — клик по телу ведёт на детали сбора, крестик закрывает сразу.
-function CollectionToast({ job, onClose }: { job: TaskCollectionJob; onClose: () => void }) {
+// — клик по телу ведёт на детали сбора и помечает уведомление прочитанным, крестик скрывает сразу.
+function CollectionToast({ job, onOpen, onDismiss }: { job: TaskCollectionJob; onOpen: () => void; onDismiss: () => void }) {
   const navigate = useNavigate();
   const [visible, setVisible] = useState(true);
-  // Храним актуальный onClose в ref, чтобы таймеры не сбрасывались при ре-рендерах от poll.
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  // Храним актуальные колбэки в ref, чтобы таймеры не сбрасывались при ре-рендерах от poll.
+  const onOpenRef = useRef(onOpen);
+  onOpenRef.current = onOpen;
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
   const hideTimerRef = useRef<number | undefined>(undefined);
   const closeTimerRef = useRef<number | undefined>(undefined);
 
@@ -56,8 +70,8 @@ function CollectionToast({ job, onClose }: { job: TaskCollectionJob; onClose: ()
     clearTimers();
     hideTimerRef.current = window.setTimeout(() => {
       setVisible(false);
-      // Финально закрываем уже после завершения fade.
-      closeTimerRef.current = window.setTimeout(() => onCloseRef.current(), FADE_MS);
+      // Скрываем локально уже после завершения fade, НЕ помечая прочитанным.
+      closeTimerRef.current = window.setTimeout(() => onDismissRef.current(), FADE_MS);
     }, AUTO_DISMISS_MS);
   }, [clearTimers]);
 
@@ -67,7 +81,7 @@ function CollectionToast({ job, onClose }: { job: TaskCollectionJob; onClose: ()
   }, [scheduleHide, clearTimers]);
 
   const handleMouseEnter = () => {
-    // Отменяем и отсчёт, и финальное закрытие, возвращаем на 100%.
+    // Отменяем и отсчёт, и финальное скрытие, возвращаем на 100%.
     clearTimers();
     setVisible(true);
   };
@@ -79,8 +93,14 @@ function CollectionToast({ job, onClose }: { job: TaskCollectionJob; onClose: ()
 
   const open = () => {
     clearTimers();
-    onCloseRef.current();
+    // Клик — единственное действие, которое помечает уведомление прочитанным.
+    onOpenRef.current();
     navigate(`/admin/collected-tasks?job=${job.id}`);
+  };
+
+  const dismissNow = () => {
+    clearTimers();
+    onDismissRef.current();
   };
 
   return (
@@ -92,7 +112,7 @@ function CollectionToast({ job, onClose }: { job: TaskCollectionJob; onClose: ()
         <span>{job.importedTotal} новых · {job.duplicatesTotal} дублей · {job.errorCount} ошибок</span>
         <span className="collection-toast__open">Открыть детали →</span>
       </div>
-      <button aria-label="Закрыть уведомление" className="text-button collection-toast__close" type="button" onClick={() => { clearTimers(); onCloseRef.current(); }}>×</button>
+      <button aria-label="Закрыть уведомление" className="text-button collection-toast__close" type="button" onClick={dismissNow}>×</button>
     </article>
   );
 }

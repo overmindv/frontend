@@ -7,8 +7,8 @@ import { ME_QUERY } from "../api/queries";
 import { AuthProvider } from "../context/AuthContext";
 import { CollectionNotifications } from "./CollectionNotifications";
 
-// acked имитирует, что сервер пометил job прочитанным: следующий refetch вернёт пустой список.
-let acked = false;
+// readIds фиксирует, какие job сервер пометил прочитанным (acknowledge).
+let readIds = new Set<string>();
 
 const job = {
   __typename: "TaskCollectionJob",
@@ -35,12 +35,11 @@ const meMock: MockedResponse = {
 const jobsMocks: MockedResponse[] = [
   {
     request: { query: COLLECTION_JOBS_QUERY, variables: { unreadOnly: true, pagination: { limit: 10, offset: 0 } } },
-    // newData переиспользуется для каждого poll/refetch, чтобы возвращать актуальный список.
     newData: () => ({
       data: {
         taskCollectionJobs: {
           __typename: "TaskCollectionJobList",
-          items: acked ? [] : [job],
+          items: [job].map((j) => ({ ...j, notificationAcknowledged: readIds.has(j.id) ? true : j.notificationAcknowledged })),
           limit: 10,
           offset: 0,
         },
@@ -51,7 +50,7 @@ const jobsMocks: MockedResponse[] = [
 
 const ackMock: MockedResponse = {
   request: { query: ACKNOWLEDGE_COLLECTION_JOB, variables: { id: "j1" } },
-  result: { data: { acknowledgeTaskCollectionJob: true } },
+  result: () => { readIds.add("j1"); return { data: { acknowledgeTaskCollectionJob: true } }; },
 };
 
 function renderToast() {
@@ -74,7 +73,7 @@ const isHiding = () => toast().classList.contains("collection-toast--hiding");
 
 describe("CollectionNotifications", () => {
   beforeEach(() => {
-    acked = false;
+    readIds = new Set<string>();
     vi.useFakeTimers({ shouldAdvanceTime: true });
   });
 
@@ -82,19 +81,19 @@ describe("CollectionNotifications", () => {
     vi.useRealTimers();
   });
 
-  test("показывает уведомление и через 5 секунд плавно исчезает, затем закрывается", async () => {
+  test("авто-скрытие через 5 секунд не помечает уведомление прочитанным", async () => {
     renderToast();
     await screen.findByText("Сбор завершён");
     expect(isHiding()).toBe(false);
 
-    // Через 5 секунд без наведения начинается fade.
+    // Через 5 секунд начинается fade, ещё 300мс — тост скрывается локально.
     act(() => { vi.advanceTimersByTime(5000); });
     expect(isHiding()).toBe(true);
-
-    // Ещё 300мс — fade закончен, срабатывает acknowledge и тост убирается из списка.
-    acked = true;
     act(() => { vi.advanceTimersByTime(300); });
     await vi.waitFor(() => expect(document.querySelector(".collection-toast")).toBeNull());
+
+    // Скрытие не вызвало acknowledge → уведомление осталось непрочитанным.
+    expect(readIds.size).toBe(0);
   });
 
   test("наведение во время исчезания возвращает уведомление, а повторное исчезание — через 5 секунд", async () => {
@@ -104,33 +103,32 @@ describe("CollectionNotifications", () => {
     act(() => { vi.advanceTimersByTime(5000); });
     expect(isHiding()).toBe(true);
 
-    // Наводим курсор — возвращаем на 100% и отменяем закрытие.
     fireEvent.mouseEnter(screen.getByRole("link"));
     expect(isHiding()).toBe(false);
 
-    // Уводим курсор — таймер сбрасывается, через 5 секунд снова fade.
     fireEvent.mouseLeave(screen.getByRole("link"));
     expect(isHiding()).toBe(false);
     act(() => { vi.advanceTimersByTime(5000); });
     expect(isHiding()).toBe(true);
   });
 
-  test("клик по уведомлению ведёт на страницу решения о публикации (детали сбора)", async () => {
+  test("клик по уведомлению ведёт на детали сбора и помечает его прочитанным", async () => {
     renderToast();
     await screen.findByText("Сбор завершён");
 
     fireEvent.click(screen.getByRole("link"));
     await screen.findByTestId("collected-page");
     expect(screen.getByTestId("collected-page")).toHaveTextContent("Детали сбора");
+    expect(readIds.has("j1")).toBe(true);
   });
 
-  test("крестик сразу закрывает уведомление без перехода", async () => {
+  test("крестик сразу скрывает уведомление без перехода и без прочтения", async () => {
     renderToast();
     await screen.findByText("Сбор завершён");
 
-    acked = true;
     fireEvent.click(screen.getByLabelText("Закрыть уведомление"));
     await vi.waitFor(() => expect(document.querySelector(".collection-toast")).toBeNull());
     expect(screen.queryByTestId("collected-page")).not.toBeInTheDocument();
+    expect(readIds.size).toBe(0);
   });
 });
