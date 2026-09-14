@@ -49,6 +49,7 @@ export const apolloClient = new ApolloClient({
       ITTaskSummary: { keyFields: ["id"] },
       ITSubmission: { keyFields: ["id"] },
       ITCodeSubmission: { keyFields: ["id"] },
+      FeedItem: { keyFields: ["id"] },
     },
   }),
   connectToDevTools: import.meta.env.DEV,
