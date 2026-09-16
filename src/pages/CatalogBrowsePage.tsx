@@ -1,6 +1,6 @@
 import { useQuery } from "@apollo/client";
 import { ArrowRight, BookOpen, Building2, GraduationCap, Search, Tags } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { COURSE_QUERY, COURSES_QUERY, PROGRAM_QUERY, PROGRAMS_QUERY, TOPIC_QUERY, TOPICS_QUERY, UNIVERSITY_QUERY, UNIVERSITIES_QUERY, type Course, type Program, type Topic, type University } from "../api/catalog";
 import { ErrorMessage } from "../components/common/ErrorMessage";
@@ -17,16 +17,25 @@ const config = {
 
 type CatalogItem = University | Program | Course | Topic;
 
-// CatalogBrowsePage показывает публичный список сущностей с локальным поиском.
+// CatalogBrowsePage показывает публичный список сущностей с серверным поиском по названию.
 export function CatalogBrowsePage({ kind }: { kind: CatalogKind }) {
   const page = config[kind];
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
-  const { data, loading, error } = useQuery<Record<string, CatalogItem[]>>(page.query, { variables: { parentId: null } });
-  const items = (data?.[page.key] ?? []).filter((item) => itemTitle(item).toLocaleLowerCase("ru").includes(search.trim().toLocaleLowerCase("ru")));
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+
+  // Дебаунс серверного поиска, чтобы не дёргать каталог на каждый символ.
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => window.clearTimeout(handle);
+  }, [search]);
+
+  const variables = kind === "universities" ? { search: debouncedSearch } : { parentId: null, search: debouncedSearch };
+  const { data, loading, error } = useQuery<Record<string, CatalogItem[]>>(page.query, { variables });
+  const items = data?.[page.key] ?? [];
   const Icon = page.icon;
 
-  return <main className="page-shell public-catalog"><header className="page-heading"><div><span className="section-kicker">Каталог</span><h1>{page.title}</h1><p>{page.description}</p></div><Icon size={28} /></header><label className="catalog-search"><Search size={18} /><input aria-label={`Поиск: ${page.title}`} onChange={(event) => setSearch(event.target.value)} placeholder={`Найти в разделе «${page.title.toLocaleLowerCase("ru")}»`} value={search} /></label>{error && <ErrorMessage message={error.message} />}{loading && !data ? <div className="content-state"><Spinner label="Загружаем каталог…" /></div> : items.length === 0 ? <div className="content-state"><Icon size={28} /><strong>{search ? "Совпадений нет" : "Раздел пока пуст"}</strong><p>{search ? "Попробуйте изменить запрос." : "Активные элементы появятся после публикации."}</p></div> : <section className="catalog-card-grid">{items.map((item) => <Link className="catalog-card" key={item.id} to={`/${kind}/${item.id}`}><div className="catalog-card__icon"><Icon size={19} /></div><div><strong>{itemTitle(item)}</strong><p>{itemDescription(item)}</p></div><ArrowRight size={17} /></Link>)}</section>}<p className="local-search-note">Поиск выполняется среди элементов, загруженных на этой странице.</p></main>;
+  return <main className="page-shell public-catalog"><header className="page-heading"><div><span className="section-kicker">Каталог</span><h1>{page.title}</h1><p>{page.description}</p></div><Icon size={28} /></header><label className="catalog-search"><Search size={18} /><input aria-label={`Поиск: ${page.title}`} onChange={(event) => setSearch(event.target.value)} placeholder={`Найти в разделе «${page.title.toLocaleLowerCase("ru")}»`} value={search} /></label>{error && <ErrorMessage message={error.message} />}{loading && !data ? <div className="content-state"><Spinner label="Загружаем каталог…" /></div> : items.length === 0 ? <div className="content-state"><Icon size={28} /><strong>{search ? "Совпадений нет" : "Раздел пока пуст"}</strong><p>{search ? "Попробуйте изменить запрос." : "Активные элементы появятся после публикации."}</p></div> : <section className="catalog-card-grid">{items.map((item) => <Link className="catalog-card" key={item.id} to={`/${kind}/${item.id}`}><div className="catalog-card__icon"><Icon size={19} /></div><div><strong>{itemTitle(item)}</strong><p>{itemDescription(item)}</p></div><ArrowRight size={17} /></Link>)}</section>}<p className="local-search-note">Поиск выполняется по всему каталогу, а не только по этой странице.</p></main>;
 }
 
 const detailConfig = {

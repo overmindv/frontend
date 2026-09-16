@@ -161,7 +161,7 @@ export interface ITCodeSubmissionInput {
   sourceCode?: string;
 }
 
-const TASK_SUMMARY_FIELDS = gql`
+export const TASK_SUMMARY_FIELDS = gql`
   fragment ITTaskSummaryFields on ITTaskSummary {
     id
     status
