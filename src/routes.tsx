@@ -12,11 +12,13 @@ import { CodeSubmissionDetailPage, SubmissionDetailPage, SubmissionHistoryPage, 
 import { HomePage } from "./pages/HomePage";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { CatalogBrowsePage, CatalogDetailPage } from "./pages/CatalogBrowsePage";
+import { SearchPage } from "./pages/SearchPage";
 
 export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/search" element={<SearchPage />} />
       <Route path="/universities" element={<CatalogBrowsePage kind="universities" />} />
       <Route path="/universities/:id" element={<CatalogDetailPage kind="universities" />} />
       <Route path="/programs" element={<CatalogBrowsePage kind="programs" />} />

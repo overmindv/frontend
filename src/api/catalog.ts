@@ -13,13 +13,13 @@ export const TOPIC_FIELDS = gql`
   fragment TopicFields on Topic { id courseId parentTopicId title slug description orderIndex difficulty status createdAt updatedAt }
 `;
 
-export const UNIVERSITIES_QUERY = gql`query Universities { universities { ...UniversityFields } } ${UNIVERSITY_FIELDS}`;
+export const UNIVERSITIES_QUERY = gql`query Universities($search: String = "") { universities(filter: { search: $search }) { ...UniversityFields } } ${UNIVERSITY_FIELDS}`;
 export const UNIVERSITY_QUERY = gql`query University($id: ID!) { university(id: $id) { ...UniversityFields } } ${UNIVERSITY_FIELDS}`;
-export const PROGRAMS_QUERY = gql`query Programs($parentId: ID) { programs(universityId: $parentId) { ...ProgramFields } } ${PROGRAM_FIELDS}`;
+export const PROGRAMS_QUERY = gql`query Programs($parentId: ID, $search: String = "") { programs(universityId: $parentId, filter: { search: $search }) { ...ProgramFields } } ${PROGRAM_FIELDS}`;
 export const PROGRAM_QUERY = gql`query Program($id: ID!) { program(id: $id) { ...ProgramFields } } ${PROGRAM_FIELDS}`;
-export const COURSES_QUERY = gql`query Courses($parentId: ID) { courses(programId: $parentId) { ...CourseFields } } ${COURSE_FIELDS}`;
+export const COURSES_QUERY = gql`query Courses($parentId: ID, $search: String = "") { courses(programId: $parentId, filter: { search: $search }) { ...CourseFields } } ${COURSE_FIELDS}`;
 export const COURSE_QUERY = gql`query Course($id: ID!) { course(id: $id) { ...CourseFields } } ${COURSE_FIELDS}`;
-export const TOPICS_QUERY = gql`query Topics($parentId: ID) { topics(courseId: $parentId) { ...TopicFields } topicTree(courseId: $parentId) { topic { ...TopicFields } children { topic { ...TopicFields } children { topic { ...TopicFields } } } } } ${TOPIC_FIELDS}`;
+export const TOPICS_QUERY = gql`query Topics($parentId: ID, $search: String = "") { topics(courseId: $parentId, filter: { search: $search }) { ...TopicFields } topicTree(courseId: $parentId) { topic { ...TopicFields } children { topic { ...TopicFields } children { topic { ...TopicFields } } } } } ${TOPIC_FIELDS}`;
 export const TOPIC_QUERY = gql`query Topic($id: ID!) { topic(id: $id) { ...TopicFields } topicPrerequisites(topicId: $id) { topicId prerequisiteTopicId createdAt } } ${TOPIC_FIELDS}`;
 
 export const CREATE_UNIVERSITY = gql`mutation CreateUniversity($input: CreateUniversityInput!) { createUniversity(input: $input) { ...UniversityFields } } ${UNIVERSITY_FIELDS}`;
