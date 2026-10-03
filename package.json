@@ -13,7 +13,9 @@
     "test:ci": "vitest run",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 4173"
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "codegen": "graphql-codegen --config codegen.yml",
+    "codegen:check": "npm run codegen && git diff --exit-code -- src/api/generated.ts"
   },
   "dependencies": {
     "@apollo/client": "3.13.9",
