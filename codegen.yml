@@ -1,0 +1,28 @@
+# Скэффолдинг C6 (аудит): кодогенерация GraphQL-типов из схемы api-gateway вместо
+# рукописных типов в src/api/*.
+#
+# Активация (нужен локальный npm; artifactory-реестр в песочнице недоступен):
+#   npm i -D @graphql-codegen/cli @graphql-codegen/typescript @graphql-codegen/typescript-operations
+#   npm run codegen             # соберёт src/api/generated.ts из schema.graphqls + gql-операций
+#   npm run typecheck           # сверить, что код тянет generated-типы
+# Если поле-скаляр не совпадает (Time/JSON/UUID) — дополнить блок `scalars`.
+#
+# После успешного прогона: закоммитить src/api/generated.ts и раскомментировать
+# job `codegen` в .github/workflows/ci.yml (проверка дрейфа схемы в CI).
+schema: ../api-gateway/api/graphql/schema.graphqls
+documents:
+  - 'src/**/*.{ts,tsx}'
+generates:
+  src/api/generated.ts:
+    plugins:
+      - typescript
+      - typescript-operations
+    config:
+      skipTypename: true
+      avoidOptionals: true
+      dedupeFragments: true
+      scalars:
+        ID: string
+        UUID: string
+        Time: string
+        JSON: any
