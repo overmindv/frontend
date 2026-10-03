@@ -20,6 +20,18 @@ export interface User {
   updatedAt: string;
 }
 
+// PublicUser — публичное представление профиля: без email, phone и birthDate.
+// Возвращается только через `userProfile` (для чужих профилей), см. api-gateway.
+export interface PublicUser {
+  id: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  avatar: Avatar | null;
+  isAdmin: boolean;
+  createdAt: string;
+}
+
 export interface AuthPayload {
   token: string;
   expiresAt: string;

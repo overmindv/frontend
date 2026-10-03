@@ -270,7 +270,6 @@ test("страница результата кодового решения по
                 correlationId: "correlation-id",
                 language: "python",
                 sourceFileName: "solution.py",
-                sourceCode: "print(4)\n",
                 status: "completed",
                 verdict: "accepted",
                 compilation: null,

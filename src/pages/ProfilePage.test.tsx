@@ -58,7 +58,6 @@ test("кодовая попытка в профиле ведёт на стран
                     correlationId: "correlation-id",
                     language: "python",
                     sourceFileName: "solution.py",
-                    sourceCode: "print(4)\n",
                     status: "completed",
                     verdict: "accepted",
                     compilation: null,

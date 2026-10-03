@@ -110,7 +110,6 @@ export interface ITCodeSubmission {
   correlationId: string;
   language: ITProgrammingLanguage;
   sourceFileName: string;
-  sourceCode: string;
   status: ITCodeSubmissionStatus;
   verdict?: ITExecutionVerdict | null;
   compilation?: ITExecutionPhaseResult | null;
@@ -231,7 +230,6 @@ const CODE_SUBMISSION_FIELDS = gql`
     correlationId
     language
     sourceFileName
-    sourceCode
     status
     verdict
     compilation {
