@@ -413,12 +413,6 @@ export function CodeSubmissionDetailPage() {
           <div><dt>Версия задачи</dt><dd>{submission.taskVersionNumber}</dd></div>
           <div><dt>Решено тестов</dt><dd>{submission.tests.length > 0 ? `${passed} из ${submission.tests.length}` : "—"}</dd></div>
         </dl>
-        {submission.sourceCode && (
-          <section className="solution-source">
-            <div className="solution-source__heading"><span>Исходный код</span><b>{submission.sourceFileName}</b></div>
-            <pre className="solution-source__body">{submission.sourceCode}</pre>
-          </section>
-        )}
         <CodeSubmissionResult examples={task?.examples ?? []} submission={submission} />
         <footer>
           <Link className="button button--primary" to={`/tasks/${submission.taskId}`}>Открыть задачу</Link>

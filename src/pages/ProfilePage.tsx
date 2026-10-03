@@ -1,9 +1,9 @@
 import { useQuery } from "@apollo/client";
 import { ArrowRight, Code2, Settings, Target, Timer, TrendingUp, UserRound } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { GET_USER_QUERY } from "../api/queries";
+import { GET_USER_QUERY, PUBLIC_USER_QUERY } from "../api/queries";
 import { MY_IT_CODE_SUBMISSIONS_QUERY, MY_IT_SUBMISSIONS_QUERY, type ITCodeSubmission, type ITSubmission } from "../api/tasks";
-import type { User } from "../api/types";
+import type { PublicUser, User } from "../api/types";
 import { AnimatedNumber } from "../components/common/AnimatedNumber";
 import { Profile } from "../components/Profile/Profile";
 import { ErrorMessage } from "../components/common/ErrorMessage";
@@ -31,10 +31,14 @@ export function ProfileSettingsPage() {
 }
 
 function UserProfile({ userID, own }: { userID: string; own: boolean }) {
-  const user = useQuery<{ getUser: User }>(GET_USER_QUERY, { variables: { id: userID }, skip: !userID });
+  // Свой профиль — полный запрос getUser; чужой — только публичный userProfile
+  // (getUser отдаёт email/phone только владельцу/админу — IDOR-защита на gateway).
+  const mine = useQuery<{ getUser: User }>(GET_USER_QUERY, { variables: { id: userID }, skip: !userID || !own });
+  const foreign = useQuery<{ userProfile: PublicUser }>(PUBLIC_USER_QUERY, { variables: { id: userID }, skip: !userID || own });
   const answers = useQuery<{ myITSubmissions: { items: ITSubmission[] } }>(MY_IT_SUBMISSIONS_QUERY, { variables: { taskId: null, pagination: { limit: 20, offset: 0 } }, skip: !own });
   const code = useQuery<{ myITCodeSubmissions: { items: ITCodeSubmission[] } }>(MY_IT_CODE_SUBMISSIONS_QUERY, { variables: { taskId: null, pagination: { limit: 20, offset: 0 } }, skip: !own });
-  const profile = user.data?.getUser;
+  const user = own ? mine : foreign;
+  const profile = own ? mine.data?.getUser : foreign.data?.userProfile;
 
   if (user.loading && !profile) return <main className="page-shell content-state"><Spinner label="Загружаем профиль…" /></main>;
   if (user.error || !profile) return <main className="page-shell"><ErrorMessage message={user.error?.message ?? "Профиль не найден"} /></main>;
@@ -47,7 +51,8 @@ function UserProfile({ userID, own }: { userID: string; own: boolean }) {
   const total = attempts.length;
   const accepted = attempts.filter((attempt) => attempt.verdict === "accepted").length;
   const accuracy = total ? Math.round((accepted / total) * 100) : 0;
-  const roleLabel = profile.isSuperuser ? "Суперпользователь" : profile.isAdmin ? "Администратор" : "Участник";
+  const isSuperuser = "isSuperuser" in profile ? profile.isSuperuser : false;
+  const roleLabel = isSuperuser ? "Суперпользователь" : profile.isAdmin ? "Администратор" : "Участник";
 
   return <main className="page-shell user-profile-page">
     <section className="profile-hero">
