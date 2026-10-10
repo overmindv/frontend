@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@apollo/client";
 import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { RotateCcw, Search, SlidersHorizontal } from "lucide-react";
+import { RotateCcw, Search } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import type { Topic } from "../../api/catalog";
 import { getErrorMessage } from "../../api/errors";
@@ -63,7 +63,7 @@ export function TasksPage() {
 
   return (
     <main className="page-shell tasks-page">
-      <header className="page-heading"><div><span className="section-kicker">Практика</span><h1>Задачи</h1><p>Выберите задачу и отправьте решение</p></div><SlidersHorizontal size={28} /></header>
+      <header className="page-heading"><div><span className="section-kicker">Практика</span><h1>Задачи</h1><p>Выберите задачу и отправьте решение</p></div></header>
       <label className="task-search"><Search size={19} /><input aria-label="Поиск задач" onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по названиям на этой странице" value={search} /><span>Локальный поиск</span></label>
       <div className="task-browser">
       <aside className="task-filters" aria-label="Фильтры задач"><div className="task-filters__heading"><strong>Фильтры</strong><button className="text-button" onClick={resetFilters} type="button"><RotateCcw size={14} /> Сбросить</button></div><FilterSelect
