@@ -1,27 +1,26 @@
-import { useEffect, useMemo, useState, type ComponentType, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQuery } from "@apollo/client";
-import { Bell, BookOpen, Building2, ChevronDown, CircleUserRound, ClipboardList, GraduationCap, Library, LogIn, Menu, Moon, Search, Settings, Shield, Sun, Tags, X } from "lucide-react";
+import { Bell, ChevronDown, CircleUserRound, LogIn, Menu, Moon, Settings, Shield, Sun, X } from "lucide-react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
-import { SEARCH_QUERY, SEARCH_KINDS, kindDescription, kindHref, kindTitle, totalResults, type SearchKindKey, type SearchResults, type Searchable } from "../../api/search";
+import { SEARCH_QUERY, SEARCH_KINDS, kindDescription, kindHref, kindTitle, totalResults, type SearchResults, type Searchable } from "../../api/search";
 
-const mainLinks = [
-  ["/", "Главная"], ["/universities", "Университеты"], ["/programs", "Программы"],
-  ["/courses", "Курсы"], ["/topics", "Темы"], ["/tasks", "Задачи"],
+const primaryLinks = [
+  ["/", "Главная"],
+  ["/search", "Поиск"],
+  ["/universities", "Университеты"],
+  ["/programs", "Программы"],
+  ["/courses", "Курсы"],
+  ["/topics", "Темы"],
+  ["/tasks", "Задачи"],
 ] as const;
-
-const kindIcons: Record<SearchKindKey, ComponentType<{ size?: number }>> = {
-  universities: Building2,
-  programs: GraduationCap,
-  courses: BookOpen,
-  topics: Tags,
-  tasks: ClipboardList,
-};
 
 type SearchGroup = { kind: (typeof SEARCH_KINDS)[number]; items: Searchable[] };
 
-// Header отображает общую навигацию, поиск и действия текущей роли.
+// Header формирует каркас приложения: спокойный сайдбар с навигацией и тонкий
+// топбар с глобальным поиском и действиями. На страницах входа/регистрации
+// остаётся только топбар.
 export function Header() {
   const navigate = useNavigate();
   const { isAuthenticated, isAdmin, logout } = useAuth();
@@ -32,6 +31,7 @@ export function Header() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const location = useLocation();
+  const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
 
   // Закрываем все меню и сбрасываем поиск при смене маршрута: попапы не должны
   // переживать навигацию (клик по ссылке меню, back/forward, Enter в поиске,
@@ -71,21 +71,111 @@ export function Header() {
     if (query.trim()) navigate(`/search?q=${encodeURIComponent(query.trim())}`);
   };
 
+  const closeMobile = () => setMobileOpen(false);
+
   return <>
-    <header className="site-header">
-      <div className="site-header__inner">
-        <Link className="brand" to="/" aria-label="Overmindv — главная"><span className="brand__mark">O</span><strong>Overmindv</strong></Link>
-        <nav className={`main-nav${mobileOpen ? " is-open" : ""}`} aria-label="Основная навигация">
-          {mainLinks.map(([to, label]) => <NavLink key={to} onClick={() => setMobileOpen(false)} to={to} end={to === "/"}>{label}</NavLink>)}
+    {!isAuthPage && (
+      <aside className={`app-sidebar${mobileOpen ? " is-open" : ""}`} id="app-sidebar">
+        <Link className="brand" to="/" aria-label="Overmindv — главная">
+          <span className="brand__mark">О</span>
+          <span className="brand__text"><strong>Overmindv</strong><small>учебная платформа</small></span>
+        </Link>
+
+        <nav className="sidebar-nav" aria-label="Основная навигация">
+          {primaryLinks.map(([to, label]) => (
+            <NavLink key={to} to={to} end={to === "/"} onClick={closeMobile}>{label}</NavLink>
+          ))}
         </nav>
-        <form className="global-search" onSubmit={submitSearch} role="search"><Search size={17} /><input aria-label="Глобальный поиск" onChange={(event) => setQuery(event.target.value)} placeholder="Поиск" value={query} /><kbd>⌘ K</kbd>{query.trim() && <div className="global-search__suggestions" aria-label="Варианты поиска">{loading ? <p className="global-search__state">Ищем…</p> : groups.length === 0 ? <p className="global-search__state">Нет совпадений по запросу «{query.trim()}»</p> : groups.map(({ kind, items }) => { const Icon = kindIcons[kind.key]; return <div className="global-search__group" key={kind.key}><span className="global-search__group-label">{kind.label}</span>{items.map((item) => <Link key={item.id} onClick={() => setQuery("")} to={`${kindHref(kind.key)}/${item.id}`}><Icon size={15} /><span><strong>{kindTitle(item)}</strong><small>{kind.singular} · {kindDescription(item)}</small></span></Link>)}</div> })}</div>}</form>
-        <div className="header-actions">
-          {isAdmin && <Link className="header-icon" to="/notifications" aria-label="Уведомления" title="Уведомления"><Bell size={18} /></Link>}
-          <button className="header-icon" onClick={cycleTheme} title={`Тема: ${preference}`} type="button" aria-label="Переключить тему">{resolvedTheme === "dark" ? <Moon size={18} /> : <Sun size={18} />}</button>
-          {isAdmin && <div className="header-menu"><button className="header-action" onClick={() => setAdminOpen((value) => !value)} type="button"><Shield size={17} /> Админ <ChevronDown size={14} /></button>{adminOpen && <AdminMenu close={() => setAdminOpen(false)} />}</div>}
-          {isAuthenticated ? <div className="header-menu"><button className="header-icon" onClick={() => setProfileOpen((value) => !value)} aria-label="Меню профиля" type="button"><CircleUserRound size={21} /></button>{profileOpen && <div className="popover-menu popover-menu--right"><Link onClick={() => setProfileOpen(false)} to="/profile"><CircleUserRound size={16} /> Профиль</Link><Link onClick={() => setProfileOpen(false)} to="/profile/settings"><Settings size={16} /> Настройки</Link><button onClick={logout} type="button"><LogIn size={16} /> Выйти</button></div>}</div> : <Link className="header-action" to="/login"><LogIn size={17} /> Войти</Link>}
-          <button className="header-icon mobile-menu-button" onClick={() => setMobileOpen((value) => !value)} aria-label="Открыть меню" type="button">{mobileOpen ? <X size={21} /> : <Menu size={21} />}</button>
+
+        {isAuthenticated && (
+          <nav className="sidebar-nav sidebar-nav--secondary" aria-label="Личное">
+            <span className="sidebar-nav__label">Личное</span>
+            <NavLink to="/history" onClick={closeMobile}>История решений</NavLink>
+            <NavLink to="/profile" onClick={closeMobile}>Профиль</NavLink>
+          </nav>
+        )}
+
+        {isAdmin && (
+          <nav className="sidebar-nav sidebar-nav--secondary" aria-label="Администрирование">
+            <span className="sidebar-nav__label">Администрирование</span>
+            <Link to="/admin/catalog/universities" onClick={closeMobile}>Каталог</Link>
+            <Link to="/admin/tasks/new" onClick={closeMobile}>Создать задачу</Link>
+            <Link to="/admin/collected-tasks" onClick={closeMobile}>Сбор и проверка</Link>
+            <Link to="/admin/users" onClick={closeMobile}>Пользователи</Link>
+          </nav>
+        )}
+
+        <div className="sidebar__footer">
+          {!isAuthenticated && <Link className="button button--primary button--full" to="/login" onClick={closeMobile}>Войти</Link>}
         </div>
+      </aside>
+    )}
+
+    {mobileOpen && !isAuthPage && <button className="sidebar-backdrop" aria-label="Закрыть меню" onClick={closeMobile} type="button" />}
+
+    <header className="app-topbar">
+      {!isAuthPage && (
+        <button className="header-icon mobile-menu-button" onClick={() => setMobileOpen((value) => !value)} aria-expanded={mobileOpen} aria-label="Открыть меню" type="button">
+          {mobileOpen ? <X size={19} /> : <Menu size={19} />}
+        </button>
+      )}
+
+      {isAuthPage && <Link className="brand" to="/" aria-label="Overmindv — главная"><span className="brand__mark">О</span><span className="brand__text"><strong>Overmindv</strong></span></Link>}
+
+      <form className="global-search" onSubmit={submitSearch} role="search">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input aria-label="Глобальный поиск" onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по каталогу и задачам" value={query} />
+        <kbd>⌘ K</kbd>
+        {query.trim() && (
+          <div className="global-search__suggestions" aria-label="Варианты поиска">
+            {loading
+              ? <p className="global-search__state">Ищем…</p>
+              : groups.length === 0
+                ? <p className="global-search__state">Нет совпадений по запросу «{query.trim()}»</p>
+                : groups.map(({ kind, items }) => (
+                    <div className="global-search__group" key={kind.key}>
+                      <span className="global-search__group-label">{kind.label}</span>
+                      {items.map((item) => (
+                        <Link key={item.id} to={`${kindHref(kind.key)}/${item.id}`} onClick={() => setQuery("")}>
+                          <strong>{kindTitle(item)}</strong>
+                          <small>{kind.singular} · {kindDescription(item)}</small>
+                        </Link>
+                      ))}
+                    </div>
+                  ))}
+          </div>
+        )}
+      </form>
+
+      <div className="header-actions">
+        {isAdmin && <button className="header-icon" onClick={() => navigate("/notifications")} aria-label="Уведомления" title="Уведомления" type="button"><Bell size={17} /></button>}
+        <button className="header-icon" onClick={cycleTheme} title={`Тема: ${preference}`} type="button" aria-label="Переключить тему">
+          {resolvedTheme === "dark" ? <Moon size={17} /> : <Sun size={17} />}
+        </button>
+        {isAdmin && (
+          <div className="header-menu">
+            <button className="header-action" onClick={() => setAdminOpen((value) => !value)} type="button">
+              <Shield size={16} /> <span className="action-label">Админ</span> <ChevronDown className="chevron" size={13} />
+            </button>
+            {adminOpen && <AdminMenu close={() => setAdminOpen(false)} />}
+          </div>
+        )}
+        {isAuthenticated ? (
+          <div className="header-menu">
+            <button className="header-icon" onClick={() => setProfileOpen((value) => !value)} aria-label="Меню профиля" type="button">
+              <CircleUserRound size={19} />
+            </button>
+            {profileOpen && (
+              <div className="popover-menu popover-menu--right">
+                <Link onClick={() => setProfileOpen(false)} to="/profile"><CircleUserRound size={15} /> Профиль</Link>
+                <Link onClick={() => setProfileOpen(false)} to="/profile/settings"><Settings size={15} /> Настройки</Link>
+                <button onClick={logout} type="button"><LogIn size={15} /> Выйти</button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Link className="header-action" to="/login"><LogIn size={16} /> <span className="action-label">Войти</span></Link>
+        )}
       </div>
     </header>
   </>;
@@ -93,5 +183,10 @@ export function Header() {
 
 // AdminMenu группирует административные переходы отдельно от пользовательской навигации.
 function AdminMenu({ close }: { close: () => void }) {
-  return <div className="popover-menu popover-menu--right"><Link onClick={close} to="/admin/tasks/new"><BookOpen size={16} /> Создать задачу</Link><Link onClick={close} to="/admin/collected-tasks"><Library size={16} /> Сбор и проверка</Link><Link onClick={close} to="/admin/catalog/universities"><Library size={16} /> Управление каталогом</Link><Link onClick={close} to="/admin/users"><CircleUserRound size={16} /> Пользователи</Link></div>;
+  return <div className="popover-menu popover-menu--right">
+    <Link onClick={close} to="/admin/tasks/new">Создать задачу</Link>
+    <Link onClick={close} to="/admin/collected-tasks">Сбор и проверка</Link>
+    <Link onClick={close} to="/admin/catalog/universities">Управление каталогом</Link>
+    <Link onClick={close} to="/admin/users">Пользователи</Link>
+  </div>;
 }
