@@ -38,6 +38,7 @@ interface MeData {
 export function AuthProvider({ children }: PropsWithChildren) {
   const navigate = useNavigate();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [sessionRestored, setSessionRestored] = useState(false);
   const { data: meData, loading: meLoading } = useQuery<MeData>(ME_QUERY, {
     fetchPolicy: "network-only",
   });
@@ -45,13 +46,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   // Восстанавливаем сессию по httpOnly cookie при загрузке страницы.
   useEffect(() => {
+    if (meLoading) return;
     const restored = meData?.me ?? null;
     setUser(
       restored
         ? { id: restored.id, isAdmin: restored.isAdmin, isSuperuser: restored.isSuperuser }
         : null,
     );
-  }, [meData]);
+    // Guard ждёт применения пользователя, а не только завершения me-запроса.
+    setSessionRestored(true);
+  }, [meData, meLoading]);
 
   const logout = useCallback(() => {
     setUser(null);
@@ -77,11 +81,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
       userId: user?.id ?? null,
       isAdmin: Boolean(user?.isAdmin || user?.isSuperuser),
       isAuthenticated: user != null,
-      isLoading: user == null && meLoading,
+      isLoading: !sessionRestored || (user == null && meLoading),
       signIn,
       logout,
     }),
-    [logout, meLoading, signIn, user],
+    [logout, meLoading, sessionRestored, signIn, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
