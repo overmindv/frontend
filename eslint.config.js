@@ -19,6 +19,7 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ["dist/**", "node_modules/**"],
+    // Внешние скрипты навыков агента не входят в исходники frontend.
+    ignores: ["dist/**", "node_modules/**", ".claude/skills/**"],
   },
 );

@@ -90,6 +90,7 @@ export function Header() {
         {isAuthenticated && (
           <nav className="sidebar-nav sidebar-nav--secondary" aria-label="Личное">
             <span className="sidebar-nav__label">Личное</span>
+            <NavLink to="/practice" onClick={closeMobile}>Практика</NavLink>
             <NavLink to="/history" onClick={closeMobile}>История решений</NavLink>
             <NavLink to="/profile" onClick={closeMobile}>Профиль</NavLink>
           </nav>
