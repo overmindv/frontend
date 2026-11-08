@@ -1,5 +1,5 @@
 import { MockedProvider } from "@apollo/client/testing";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
@@ -35,6 +35,57 @@ const task = {
     { __typename: "ITTaskOption", id: "option-b", text: "Требуют implements", position: 1, isCorrect: null },
   ],
 };
+
+test("статус учитывает неверный и верный ответ, сохраняя успех при ошибке истории без дублирования попытки", async () => {
+  vi.spyOn(globalThis.crypto, "randomUUID")
+    .mockReturnValueOnce("11111111-1111-4111-8111-111111111111")
+    .mockReturnValueOnce("22222222-2222-4222-8222-222222222222");
+  const user = userEvent.setup();
+  const historyRequest = { query: MY_IT_SUBMISSIONS_QUERY, variables: { taskId: task.id, pagination: { limit: 100, offset: 0 } } };
+  const submission = (correct: boolean) => ({
+    __typename: "ITSubmission", id: correct ? "right" : "wrong", userId: "user-id", taskId: task.id,
+    taskVersionId: task.taskVersionId, taskVersionNumber: 1,
+    selectedOptionIds: [correct ? "option-a" : "option-b"], correctOptionIds: ["option-a"],
+    correct, verdict: correct ? "accepted" : "wrong_answer", taskUpdated: false,
+    latestTaskVersionId: task.taskVersionId, latestVersionNumber: 1, createdAt: "2026-08-03T10:05:00Z",
+  });
+  const answer = (correct: boolean) => ({
+    request: { query: SUBMIT_IT_TASK_ANSWER, variables: { taskId: task.id, input: {
+      taskVersionId: task.taskVersionId, idempotencyKey: correct ? "22222222-2222-4222-8222-222222222222" : "11111111-1111-4111-8111-111111111111",
+      selectedOptionIds: [correct ? "option-a" : "option-b"],
+    } } }, result: { data: { submitITTaskAnswer: submission(correct) } },
+  });
+  const refreshFailure = new Error("history unavailable");
+  let failedRefreshes = 0;
+  const historyFailure = () => ({ request: { query: MY_IT_SUBMISSIONS_QUERY }, error: refreshFailure,
+    variableMatcher: () => { failedRefreshes += 1; return true; },
+  });
+  render(<MockedProvider addTypename={false} mocks={[
+    meMock(), { request: { query: IT_TASK_QUERY, variables: { id: task.id } }, result: { data: { itTask: task } } },
+    { request: historyRequest, result: { data: { myITSubmissions: { items: [], limit: 100, offset: 0 } } } },
+    { request: { query: MY_IT_CODE_SUBMISSIONS_QUERY, variables: historyRequest.variables }, result: { data: { myITCodeSubmissions: { items: [], limit: 100, offset: 0 } } } },
+    answer(false), { request: historyRequest, result: { data: { myITSubmissions: { items: [submission(false)], limit: 100, offset: 0 } } } },
+    answer(true), historyFailure(), answer(true), historyFailure(),
+  ]}><MemoryRouter initialEntries={[`/tasks/${task.id}`]}><AuthProvider><Routes><Route path="/tasks/:id" element={<TaskSolvePage />} /></Routes></AuthProvider></MemoryRouter></MockedProvider>);
+  await screen.findByText("Ещё не решалась");
+  await user.click(screen.getByText("Требуют implements"));
+  await user.click(screen.getByRole("button", { name: "Проверить ответ" }));
+  await screen.findByText("Есть решение, но неверное");
+  expect(screen.getByText("Попытки").nextElementSibling).toHaveTextContent("1");
+  expect(screen.getByText("Принято").nextElementSibling).toHaveTextContent("0");
+  await user.click(screen.getByText("Реализуются неявно"));
+  await user.click(screen.getByRole("button", { name: "Проверить ответ" }));
+  await screen.findByText("Решена правильно");
+  await waitFor(() => expect(failedRefreshes).toBe(1));
+  await user.click(screen.getByRole("button", { name: "Проверить ещё раз" }));
+  await waitFor(() => expect(failedRefreshes).toBe(2));
+  expect(screen.getByText("Ответ принят")).toBeInTheDocument();
+  expect(screen.getByText("Решена правильно")).toBeInTheDocument();
+  expect(screen.getByText("Попытки").nextElementSibling).toHaveTextContent("2");
+  expect(screen.getByText("Принято").nextElementSibling).toHaveTextContent("1");
+  expect(screen.getByText("50%")).toBeInTheDocument();
+  expect(screen.queryByText("Ещё не решалась")).not.toBeInTheDocument();
+});
 
 // TestTaskSolveFlow проверяет выбор ответа, submit и уведомление о новой версии.
 test("пользователь решает открытую версию теста", async () => {
