@@ -8,12 +8,15 @@ import { SEARCH_QUERY, SEARCH_KINDS, kindDescription, kindHref, kindTitle, total
 
 const primaryLinks = [
   ["/", "Главная"],
-  ["/search", "Поиск"],
+  ["/tasks", "Задачи"],
+  ["/practice", "Практика"],
+] as const;
+
+const catalogLinks = [
   ["/universities", "Университеты"],
   ["/programs", "Программы"],
   ["/courses", "Курсы"],
   ["/topics", "Темы"],
-  ["/tasks", "Задачи"],
 ] as const;
 
 type SearchGroup = { kind: (typeof SEARCH_KINDS)[number]; items: Searchable[] };
@@ -85,13 +88,17 @@ export function Header() {
           {primaryLinks.map(([to, label]) => (
             <NavLink key={to} to={to} end={to === "/"} onClick={closeMobile}>{label}</NavLink>
           ))}
+          {isAuthenticated && <NavLink to="/history" onClick={closeMobile}>История решений</NavLink>}
+        </nav>
+
+        <nav className="sidebar-nav sidebar-nav--secondary" aria-label="Каталог">
+          <span className="sidebar-nav__label">Каталог</span>
+          {catalogLinks.map(([to, label]) => <NavLink key={to} to={to} onClick={closeMobile}>{label}</NavLink>)}
         </nav>
 
         {isAuthenticated && (
           <nav className="sidebar-nav sidebar-nav--secondary" aria-label="Личное">
             <span className="sidebar-nav__label">Личное</span>
-            <NavLink to="/practice" onClick={closeMobile}>Практика</NavLink>
-            <NavLink to="/history" onClick={closeMobile}>История решений</NavLink>
             <NavLink to="/profile" onClick={closeMobile}>Профиль</NavLink>
           </nav>
         )}
@@ -103,6 +110,7 @@ export function Header() {
             <Link to="/admin/tasks/new" onClick={closeMobile}>Создать задачу</Link>
             <Link to="/admin/collected-tasks" onClick={closeMobile}>Сбор и проверка</Link>
             <Link to="/admin/users" onClick={closeMobile}>Пользователи</Link>
+            <Link to="/notifications" onClick={closeMobile}>Уведомления</Link>
           </nav>
         )}
 
@@ -126,7 +134,6 @@ export function Header() {
       <form className="global-search" onSubmit={submitSearch} role="search">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         <input aria-label="Глобальный поиск" onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по каталогу и задачам" value={query} />
-        <kbd>⌘ K</kbd>
         {query.trim() && (
           <div className="global-search__suggestions" aria-label="Варианты поиска">
             {loading
@@ -149,12 +156,12 @@ export function Header() {
       </form>
 
       <div className="header-actions">
-        {isAdmin && <button className="header-icon" onClick={() => navigate("/notifications")} aria-label="Уведомления" title="Уведомления" type="button"><Bell size={17} /></button>}
+        {isAdmin && <button className="header-icon header-admin-control" onClick={() => navigate("/notifications")} aria-label="Уведомления" title="Уведомления" type="button"><Bell size={17} /></button>}
         <button className="header-icon" onClick={cycleTheme} title={`Тема: ${preference}`} type="button" aria-label="Переключить тему">
           {resolvedTheme === "dark" ? <Moon size={17} /> : <Sun size={17} />}
         </button>
         {isAdmin && (
-          <div className="header-menu">
+          <div className="header-menu header-admin-control">
             <button className="header-action" onClick={() => setAdminOpen((value) => !value)} type="button">
               <Shield size={16} /> <span className="action-label">Админ</span> <ChevronDown className="chevron" size={13} />
             </button>
