@@ -1,5 +1,5 @@
 import { MockedProvider } from "@apollo/client/testing";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
@@ -101,7 +101,7 @@ test("пользователь решает открытую версию тес
   await user.click(screen.getByRole("button", { name: "Проверить ответ" }));
 
   expect(await screen.findByText("Ответ принят")).toBeInTheDocument();
-  expect(screen.getByText("Тест был обновлён")).toBeInTheDocument();
+  expect(screen.getByText("Задача была обновлена")).toBeInTheDocument();
 });
 
 // TestProgrammingTaskUpload проверяет выбор файла и отображение результата sandbox.
@@ -236,7 +236,8 @@ test("карточка задачи целиком ведёт на страни�
 });
 
 // TestCodeSubmissionDetail показывает сохранённый результат программной попытки.
-test("страница результата кодового решения показывает вердикт и исходный код", async () => {
+test("страница результата кодового решения показывает сохранённый вывод и подробности теста", async () => {
+  const user = userEvent.setup();
   const programmingTask = {
     ...task,
     id: "programming-id",
@@ -309,9 +310,21 @@ test("страница результата кодового решения по
   );
 
   expect(await screen.findByRole("heading", { name: "Решение принято" })).toBeInTheDocument();
-  expect(screen.getByText(/print\(4\)/)).toBeInTheDocument();
-  expect(screen.getAllByText("solution.py").length).toBeGreaterThan(0);
-  expect(screen.getAllByText(/1 из 1/).length).toBeGreaterThan(0);
+  // sourceCode is submission input only; the saved result exposes execution output.
+  expect(screen.getByText("4", { selector: "pre" })).toBeInTheDocument();
+  expect(screen.getByText("solution.py")).toBeInTheDocument();
+  expect(screen.getByText("Python")).toBeInTheDocument();
+  expect(screen.getByText("1 из 1 тестов прошло")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Открыть задачу" })).toHaveAttribute("href", "/tasks/programming-id");
+
+  const testDetails = screen.getByRole("button", { name: /Тест 1/ });
+  expect(testDetails).toHaveAttribute("aria-expanded", "false");
+  await user.click(testDetails);
+
+  expect(testDetails).toHaveAttribute("aria-expanded", "true");
+  expect(await screen.findByText("2 + 2", { selector: "pre" })).toBeInTheDocument();
+  expect(within(screen.getByText("Ожидаемый вывод").parentElement!).getByText("4", { selector: "pre" })).toBeInTheDocument();
+  expect(within(screen.getByText("Фактический вывод").parentElement!).getByText("4", { selector: "pre" })).toBeInTheDocument();
 });
 
 // TestTaskSolveStatusBanner показывает маркер «решена правильно» при повторном открытии.

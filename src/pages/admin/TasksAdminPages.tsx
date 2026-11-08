@@ -73,7 +73,7 @@ export function AdminTasksPage() {
           <span className="eyebrow">Управление контентом</span>
           <h1>IT-задачи</h1>
         </div>
-        <Link className="button button--primary" to="/admin/tasks/new">Создать тест</Link>
+        <Link className="button button--primary" to="/admin/tasks/new">Создать задачу</Link>
       </header>
 
       <section className="admin-filterbar">
@@ -82,18 +82,22 @@ export function AdminTasksPage() {
         <AdminSelect label="Сложность" value={difficulty} onChange={(value) => { setDifficulty(value as ITTaskDifficulty | ""); setOffset(0); }} options={[["", "Любая"], ["easy", "Начальная"], ["medium", "Средняя"], ["hard", "Сложная"]]} />
       </section>
 
-      {error && <ErrorMessage message={getErrorMessage(error)} />}
-      {loading && !data ? (
-        <div className="panel panel--center"><Spinner label="Загружаем тесты…" /></div>
+      {error ? (
+        <div className="content-state">
+          <ErrorMessage message={getErrorMessage(error)} />
+          <button className="button button--ghost" type="button" onClick={() => void refetch().catch(() => undefined)}>Повторить</button>
+        </div>
+      ) : loading && !data ? (
+        <div className="panel panel--center"><Spinner label="Загружаем задачи…" /></div>
       ) : items.length === 0 ? (
-        <section className="empty-state"><span>00</span><h2>Ничего не найдено</h2><p>Измените фильтры или создайте первый тест.</p></section>
+        <section className="empty-state"><h2>Ничего не найдено</h2><p>Измените фильтры или создайте первую задачу.</p></section>
       ) : (
         <div className="admin-task-list">
           {items.map((task) => <AdminTaskRow key={task.id} task={task} refetch={refetch} />)}
         </div>
       )}
 
-      {(offset > 0 || items.length === adminPageSize) && (
+      {!error && (offset > 0 || items.length === adminPageSize) && (
         <nav className="pagination" aria-label="Пагинация">
           <button className="button button--ghost" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - adminPageSize))}>← Назад</button>
           <span>Страница {Math.floor(offset / adminPageSize) + 1}</span>
@@ -110,6 +114,7 @@ export function AdminTaskFormPage({ create = false }: { create?: boolean }) {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const initialized = useRef(false);
+  const validationRef = useRef<HTMLDivElement>(null);
   const [form, setForm] = useState<TaskFormState>(() => emptyTaskForm());
   const [validationError, setValidationError] = useState<string | null>(null);
   const taskQuery = useQuery<{ adminITTask: ITTask }>(ADMIN_IT_TASK_QUERY, {
@@ -137,6 +142,10 @@ export function AdminTaskFormPage({ create = false }: { create?: boolean }) {
       })),
     });
   }, [taskQuery.data?.adminITTask]);
+
+  useEffect(() => {
+    if (validationError) validationRef.current?.focus();
+  }, [validationError]);
 
   // updateOption изменяет одно поле локального варианта.
   const updateOption = (key: string, patch: Partial<EditableOption>) => {
@@ -226,15 +235,17 @@ export function AdminTaskFormPage({ create = false }: { create?: boolean }) {
     <main className="page-shell task-editor">
       <header className="editor-heading">
         <div>
-          <Link className="back-link" to="/admin/tasks">← К списку тестов</Link>
+          <Link className="back-link" to="/admin/tasks">← К списку задач</Link>
           <span className="eyebrow">{create ? "Новый материал" : `Версия ${taskQuery.data?.adminITTask.versionNumber ?? "—"}`}</span>
-          <h1>{create ? "Создание теста" : "Новая версия теста"}</h1>
-          <p>{create ? "После сохранения тест останется черновиком." : "Предыдущая версия и результаты пользователей сохранятся без изменений."}</p>
+          <h1>{create ? "Создание задачи" : "Новая версия задачи"}</h1>
+          <p>{create ? "Сначала сохраните черновик. Затем проверьте задачу и опубликуйте её в списке задач." : "Предыдущая версия и результаты пользователей сохранятся без изменений."}</p>
         </div>
+        {!create && taskQuery.data?.adminITTask.status === "draft" && <Link className="text-link" to="/admin/tasks">Опубликовать в списке задач →</Link>}
         {!create && <span className="status-tag">{statusLabel(taskQuery.data?.adminITTask.status ?? "draft")}</span>}
       </header>
 
-      {(validationError || requestError) && <ErrorMessage message={validationError ?? getErrorMessage(requestError)} />}
+      {validationError && <div className="message message--error" role="alert" tabIndex={-1} ref={validationRef}>{validationError}</div>}
+      {requestError && <ErrorMessage message={getErrorMessage(requestError)} />}
 
       <form className="editor-form" onSubmit={(event) => void submitTask(event)}>
         <section className="editor-section">
@@ -306,7 +317,7 @@ function AdminTaskRow({ task, refetch }: { task: ITTaskList["items"][number]; re
 
   // removeTask подтверждает и выполняет soft delete.
   const removeTask = async () => {
-    if (!window.confirm(`Удалить тест «${task.title}»?`)) return;
+    if (!window.confirm(`Удалить задачу «${task.title}»?`)) return;
     await deleteTask({ variables: { id: task.id } });
     await refetch();
   };

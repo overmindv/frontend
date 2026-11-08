@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@apollo/client";
-import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { RotateCcw, Search } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import type { Topic } from "../../api/catalog";
@@ -37,13 +37,15 @@ export function TasksPage() {
   const [difficulty, setDifficulty] = useState<ITTaskDifficulty | "">("");
   const [topicId, setTopicId] = useState("");
   const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
+  const [submittedSearch, setSubmittedSearch] = useState(() => searchParams.get("search")?.trim() ?? "");
   const topics = useQuery<{ topics: Topic[] }>(IT_TASK_TOPICS_QUERY);
   const filter: ITTaskFilter = {
+    ...(submittedSearch ? { search: submittedSearch } : {}),
     ...(taskType ? { taskType } : {}),
     ...(difficulty ? { difficulty } : {}),
     ...(topicId ? { topicId } : {}),
   };
-  const { data, loading, error } = useQuery<{ itTasks: ITTaskList }>(IT_TASKS_QUERY, {
+  const { data, loading, error, refetch } = useQuery<{ itTasks: ITTaskList }>(IT_TASKS_QUERY, {
     variables: {
       filter,
       pagination: { limit: pageSize, offset },
@@ -51,20 +53,22 @@ export function TasksPage() {
     fetchPolicy: "cache-and-network",
   });
   const items = data?.itTasks.items ?? [];
-  const visibleItems = useMemo(() => items.filter((task) => task.title.toLocaleLowerCase("ru").includes(search.trim().toLocaleLowerCase("ru"))), [items, search]);
 
   const resetFilters = () => {
     setTaskType("");
     setDifficulty("");
     setTopicId("");
     setSearch("");
+    setSubmittedSearch("");
     setOffset(0);
   };
 
   return (
     <main className="page-shell tasks-page">
-      <header className="page-heading"><div><span className="section-kicker">Практика</span><h1>Задачи</h1><p>Выберите задачу и отправьте решение</p></div></header>
-      <label className="task-search"><Search size={19} /><input aria-label="Поиск задач" onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по названиям на этой странице" value={search} /><span>Локальный поиск</span></label>
+      <header className="page-heading"><div><h1>Задачи</h1><p>Выберите задачу и отправьте решение</p></div></header>
+      <form className="task-search" role="search" onSubmit={(event) => { event.preventDefault(); setSubmittedSearch(search.trim()); setOffset(0); }}>
+        <Search size={19} aria-hidden="true" /><input aria-label="Поиск задач" onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по названию" value={search} /><button className="button button--primary" type="submit">Найти</button>
+      </form>
       <div className="task-browser">
       <aside className="task-filters" aria-label="Фильтры задач"><div className="task-filters__heading"><strong>Фильтры</strong><button className="text-button" onClick={resetFilters} type="button"><RotateCcw size={14} /> Сбросить</button></div><FilterSelect
           label="Формат"
@@ -106,28 +110,27 @@ export function TasksPage() {
             ...(topics.data?.topics.map((topic) => [topic.id, topic.title] as [string, string]) ?? []),
           ]}
         />
-        <label className="filter-select is-disabled"><span>Теги</span><input disabled placeholder="После подключения API" /></label>
-        <div className="task-filter-note">Фильтры применяются сервером. Поиск по названию — среди текущей страницы.</div>
       </aside>
-      <section className="task-results"><div className="task-results__heading"><div><span className="section-kicker">Список</span><h2>Доступные задачи</h2></div><strong>{visibleItems.length}</strong></div>
-      {(error || topics.error) && <ErrorMessage message={getErrorMessage(error ?? topics.error)} />}
-      {loading && !data ? (
+      <section className="task-results">
+      {topics.error && <div className="content-state"><ErrorMessage message={getErrorMessage(topics.error)} /><button className="button button--ghost" type="button" onClick={() => void topics.refetch().catch(() => undefined)}>Повторить загрузку тем</button></div>}
+      {error ? <div className="content-state"><ErrorMessage message={getErrorMessage(error)} /><button className="button button--ghost" type="button" onClick={() => void refetch().catch(() => undefined)}>Повторить</button></div> :
+      loading && !data ? (
         <div className="panel panel--center"><Spinner label="Загружаем задачи…" /></div>
-      ) : visibleItems.length === 0 ? (
+      ) : items.length === 0 ? (
         <EmptyState title="Задач пока нет" text="Попробуйте изменить фильтры или вернитесь позже." />
       ) : (
         <section className="task-grid" aria-label="Список задач">
-          {visibleItems.map((task, index) => (
-            <TaskCard key={task.id} task={task} index={offset + index + 1} topics={topics.data?.topics ?? []} />
+          {items.map((task) => (
+            <TaskCard key={task.id} task={task} topics={topics.data?.topics ?? []} />
           ))}
         </section>
       )}
 
-      <Pagination
+      {!error && <Pagination
         offset={offset}
         hasNext={items.length === pageSize}
         onChange={setOffset}
-      />
+      />}
       </section></div>
     </main>
   );
@@ -196,7 +199,7 @@ export function TaskSolvePage() {
   };
 
   if (loading && !task) {
-    return <main className="page-shell panel panel--center"><Spinner label="Открываем тест…" /></main>;
+    return <main className="page-shell panel panel--center"><Spinner label="Открываем задачу…" /></main>;
   }
   if (error || !task) {
     return <main className="page-shell panel"><ErrorMessage message={getErrorMessage(error)} /></main>;
@@ -230,7 +233,7 @@ export function TaskSolvePage() {
         {result?.taskUpdated && (
           <div className="version-notice" role="status">
             <div>
-              <strong>Тест был обновлён</strong>
+              <strong>Задача была обновлена</strong>
               <span>Ответ проверен по версии, которую вы открыли.</span>
             </div>
             <button className="text-button" type="button" onClick={() => void loadLatestTask()}>
@@ -423,12 +426,11 @@ export function CodeSubmissionDetailPage() {
 }
 
 // TaskCard отображает краткую карточку опубликованного теста.
-function TaskCard({ task, index, topics }: { task: ITTaskList["items"][number]; index: number; topics: Topic[] }) {
+function TaskCard({ task, topics }: { task: ITTaskList["items"][number]; topics: Topic[] }) {
   const topic = topics.find((item) => item.id === task.topicId);
 
   return (
     <Link aria-label={`Открыть задачу ${task.title}`} className="task-card" to={`/tasks/${task.id}`}>
-      <div className="task-card__number">{index.toString().padStart(2, "0")}</div>
       <div className="task-card__body">
         <div className="task-card__meta">
           <span>{difficultyLabel(task.difficulty)}</span>
@@ -491,7 +493,7 @@ function Pagination({ offset, hasNext, onChange }: { offset: number; hasNext: bo
 
 // EmptyState объясняет пустое состояние списка.
 function EmptyState({ title, text }: { title: string; text: string }) {
-  return <section className="empty-state"><span>00</span><h2>{title}</h2><p>{text}</p></section>;
+  return <section className="empty-state"><h2>{title}</h2><p>{text}</p></section>;
 }
 
 // typeLabel переводит технический тип задачи.
