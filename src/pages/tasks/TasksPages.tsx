@@ -151,7 +151,7 @@ export function TaskSolvePage() {
     { taskId: string; input: ITSubmissionInput }
   >(SUBMIT_IT_TASK_ANSWER);
   const task = data?.itTask;
-  const { stats: solveStats } = useTaskSolveStatus(id, isAuthenticated);
+  const { stats: solveStats, recordAnswer } = useTaskSolveStatus(id, isAuthenticated);
 
   // toggleOption обновляет множество выбранных ответов и начинает новую попытку.
   const toggleOption = (optionID: string) => {
@@ -187,6 +187,7 @@ export function TaskSolvePage() {
     });
     if (response.data?.submitITTaskAnswer) {
       setResult(response.data.submitITTaskAnswer);
+      recordAnswer(response.data.submitITTaskAnswer);
     }
   };
 
