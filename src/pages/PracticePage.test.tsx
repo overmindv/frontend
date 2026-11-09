@@ -1,6 +1,6 @@
-import { gql } from "@apollo/client";
-import { MockedProvider, type MockedResponse } from "@apollo/client/testing";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { ApolloLink, Observable, gql } from "@apollo/client";
+import { MockLink, MockedProvider, type MockedResponse } from "@apollo/client/testing";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../context/AuthContext";
@@ -52,13 +52,33 @@ const goal = {
 const goalMock = (saved: typeof goal | null = null): MockedResponse => ({
   request: { query: PRACTICE_GOAL_QUERY }, result: { data: { myPracticeGoal: saved } },
 });
-function show(mocks: MockedResponse[] = [], authenticated = true) {
+function show(mocks: MockedResponse[] = [], authenticated = true, link?: ApolloLink) {
   const goalMocks = mocks.some((mock) => mock.request.query === PRACTICE_GOAL_QUERY) ? [] : [goalMock()];
-  return render(<MockedProvider mocks={[meMock(authenticated ? undefined : null), ...goalMocks, ...mocks]}>
+  return render(<MockedProvider link={link} mocks={[meMock(authenticated ? undefined : null), ...goalMocks, ...mocks]}>
     <MemoryRouter initialEntries={["/practice"]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><AuthProvider><ThemeProvider>
       <Header /><AppRoutes />
     </ThemeProvider></AuthProvider></MemoryRouter>
   </MockedProvider>);
+}
+
+function deferredGoal(saved: typeof goal | null, mocks: MockedResponse[] = []) {
+  let deliver: (() => void) | undefined;
+  const link = ApolloLink.from([
+    new ApolloLink((operation, forward) => {
+      if (operation.operationName !== "MyPracticeGoal") return forward(operation);
+      return new Observable((observer) => {
+        deliver = () => {
+          observer.next({ data: { myPracticeGoal: saved } });
+          observer.complete();
+        };
+      });
+    }),
+    new MockLink([meMock(), ...mocks]),
+  ]);
+  return { link, release: () => {
+    if (!deliver) throw new Error("Goal query has not started");
+    deliver();
+  } };
 }
 
 test("сохранённая цель загружает актуальную подборку при возвращении", async () => {
@@ -78,24 +98,26 @@ test("недоступную тему сохранённой цели можно
 });
 
 test("поздняя загрузка цели не заменяет ручной выбор", async () => {
-  show([{ ...goalMock({ ...goal, topics: [{ ...goal.topics[0], id: "topic-1", title: "Тема 2" }] }), delay: 150 }, topicsMock()]);
+  const deferred = deferredGoal({ ...goal, topics: [{ ...goal.topics[0], id: "topic-1", title: "Тема 2" }] }, [topicsMock()]);
+  show([], true, deferred.link);
   await selectTopic();
   fireEvent.change(screen.getByRole("spinbutton", { name: "Время на практику, минут" }), { target: { value: "30" } });
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  await act(async () => deferred.release());
   expect(screen.getByRole("checkbox", { name: "Тема 1" })).toBeChecked();
   expect(screen.getByRole("checkbox", { name: "Тема 2" })).not.toBeChecked();
   expect(screen.getByRole("spinbutton", { name: "Время на практику, минут" })).toHaveValue(30);
 });
 
 test("поздняя загрузка старой цели не отменяет новое сохранение", async () => {
-  show([{ ...goalMock(null), delay: 150 }, topicsMock(), {
+  const deferred = deferredGoal(null, [topicsMock(), {
     request: { query: SAVE_PRACTICE_GOAL_MUTATION, variables: { topicIds: ["topic-0"], minutes: 60 } },
     result: { data: { savePracticeGoal: goal } },
   }]);
+  show([], true, deferred.link);
   await selectTopic();
   await userEvent.click(screen.getByRole("button", { name: "Сохранить цель" }));
   expect(await screen.findByRole("button", { name: "Удалить сохранённую цель" })).toBeInTheDocument();
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  await act(async () => deferred.release());
   expect(screen.getByRole("button", { name: "Удалить сохранённую цель" })).toBeInTheDocument();
   expect(screen.getByText("Цель сохранена. При возвращении подборка обновится по вашим решениям.")).toBeInTheDocument();
 });
