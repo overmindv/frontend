@@ -122,6 +122,7 @@ export interface ITCodeSubmission {
 }
 
 export interface ITTaskFilter {
+  search?: string;
   taskType?: ITTaskType;
   difficulty?: ITTaskDifficulty;
   topicId?: string;

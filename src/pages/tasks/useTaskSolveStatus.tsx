@@ -1,4 +1,5 @@
 import { useQuery } from "@apollo/client";
+import { useState } from "react";
 import { CheckCircle2, CircleDashed, XCircle } from "lucide-react";
 import {
   MY_IT_CODE_SUBMISSIONS_QUERY,
@@ -23,7 +24,12 @@ export interface TaskSolveStats {
 
 // useTaskSolveStatus собирает историю текущего пользователя по задаче и сводит её
 // в краткий статус для бейджа и метрик. При неавторизованном доступе ничего не грузит.
-export function useTaskSolveStatus(taskId: string, enabled: boolean): { loading: boolean; stats: TaskSolveStats | null } {
+export function useTaskSolveStatus(taskId: string, enabled: boolean): {
+  loading: boolean;
+  stats: TaskSolveStats | null;
+  recordAnswer: (submission: ITSubmission) => void;
+} {
+  const [confirmedAnswers, setConfirmedAnswers] = useState<ITSubmission[]>([]);
   const answers = useQuery<{ myITSubmissions: { items: ITSubmission[] } }>(MY_IT_SUBMISSIONS_QUERY, {
     variables: { taskId, pagination: { limit: 100, offset: 0 } },
     skip: !enabled,
@@ -35,15 +41,25 @@ export function useTaskSolveStatus(taskId: string, enabled: boolean): { loading:
     fetchPolicy: "network-only",
   });
 
+  const recordAnswer = (submission: ITSubmission) => {
+    // Mutation success is already persisted. A failed/stale history refresh must
+    // not erase it, and an idempotent retry must not count the same attempt twice.
+    setConfirmedAnswers((current) => [...current.filter((item) => item.id !== submission.id), submission]);
+    void answers.refetch().catch(() => undefined);
+  };
+
   if (!enabled) {
-    return { loading: false, stats: null };
+    return { loading: false, stats: null, recordAnswer };
   }
 
-  const choiceItems = answers.data?.myITSubmissions.items ?? [];
+  const historyItems = (answers.data ?? answers.previousData)?.myITSubmissions.items ?? [];
+  const choiceItems = [...new Map([...historyItems, ...confirmedAnswers]
+    .filter((item) => item.taskId === taskId)
+    .map((item) => [item.id, item])).values()];
   const codeItems = code.data?.myITCodeSubmissions.items ?? [];
 
-  if (answers.loading || code.loading) {
-    return { loading: true, stats: null };
+  if ((answers.loading || code.loading) && choiceItems.length === 0) {
+    return { loading: true, stats: null, recordAnswer };
   }
 
   const attempted = choiceItems.length + codeItems.length;
@@ -62,6 +78,7 @@ export function useTaskSolveStatus(taskId: string, enabled: boolean): { loading:
 
   return {
     loading: false,
+    recordAnswer,
     stats: {
       status,
       attempted,

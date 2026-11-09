@@ -1,13 +1,11 @@
 import { useQuery } from "@apollo/client";
-import { ArrowRight, Code2, Settings, Target, Timer, TrendingUp, UserRound } from "lucide-react";
+import { ArrowRight, Code2, Settings, UserRound } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { GET_USER_QUERY, PUBLIC_USER_QUERY } from "../api/queries";
 import { MY_IT_CODE_SUBMISSIONS_QUERY, MY_IT_SUBMISSIONS_QUERY, type ITCodeSubmission, type ITSubmission } from "../api/tasks";
 import type { PublicUser, User } from "../api/types";
-import { AnimatedNumber } from "../components/common/AnimatedNumber";
 import { Profile } from "../components/Profile/Profile";
 import { ErrorMessage } from "../components/common/ErrorMessage";
-import { Reveal } from "../components/common/Reveal";
 import { Spinner } from "../components/common/Spinner";
 import { useAuth } from "../context/AuthContext";
 
@@ -27,7 +25,7 @@ export function PublicUserProfilePage() {
 
 // ProfileSettingsPage сохраняет существующую форму редактирования на отдельном маршруте.
 export function ProfileSettingsPage() {
-  return <main className="page-shell settings-page"><header className="page-heading"><div><span className="section-kicker">Профиль</span><h1>Настройки</h1><p>Основная информация аккаунта</p></div><Settings size={28} /></header><Profile /></main>;
+  return <main className="page-shell settings-page"><header className="page-heading"><div><span className="section-kicker">Профиль</span><h1>Настройки</h1><p>Основная информация аккаунта</p></div></header><Profile /></main>;
 }
 
 function UserProfile({ userID, own }: { userID: string; own: boolean }) {
@@ -56,44 +54,55 @@ function UserProfile({ userID, own }: { userID: string; own: boolean }) {
 
   return <main className="page-shell user-profile-page">
     <section className="profile-hero">
-      <Reveal as="aside" className="profile-identity">
+      <aside className="profile-identity">
         <div className="profile-avatar">
           {profile.avatar?.smallUrl || profile.avatar?.mediumUrl ? (
             <img className="profile-avatar-img" src={profile.avatar.mediumUrl || profile.avatar.smallUrl} alt={`Аватар ${displayName}`} />
           ) : (
             <span>{displayName.slice(0, 1).toUpperCase()}</span>
           )}
-          <small>С нами с {formatDate(profile.createdAt)}</small>
+          <small>На платформе с {formatDate(profile.createdAt)}</small>
         </div>
         <dl>
-          <div><dt>Роль</dt><dd><span className="role-badge">{roleLabel}</span></dd></div>
-          <div><dt>На платформе</dt><dd>с {formatDate(profile.createdAt)}</dd></div>
+          <div><dt>Роль</dt><dd>{roleLabel}</dd></div>
         </dl>
-      </Reveal>
+      </aside>
 
       <div className="profile-main">
-        <Reveal as="header">
+        <header>
           <div>
             <span className="section-kicker">Профиль</span>
             <h1>{displayName}</h1>
             <p>@{profile.username}</p>
           </div>
-          {own && <Link className="button button--ghost profile-settings-link" to="/profile/settings"><Settings size={17} /> Настройки</Link>}
-        </Reveal>
+          {own && <Link className="button button--ghost profile-settings-link" to="/profile/settings"><Settings size={15} /> Настройки</Link>}
+        </header>
 
         {own && (
-          <Reveal className="profile-stats">
-            <div className="stat-card"><span className="stat-card__icon"><Timer size={18} /></span><AnimatedNumber className="stat-card__value" value={total} /><span className="stat-card__label">Всего попыток</span></div>
-            <div className="stat-card"><span className="stat-card__icon"><TrendingUp size={18} /></span><AnimatedNumber className="stat-card__value" value={accepted} /><span className="stat-card__label">Принято</span></div>
-            <div className="stat-card"><span className="stat-card__icon"><Target size={18} /></span><AnimatedNumber className="stat-card__value" value={accuracy} suffix="%" /><span className="stat-card__label">Точность</span></div>
-          </Reveal>
+          <div className="profile-stats">
+            <span className="profile-stats__item"><strong>{total}</strong><span>попыток</span></span>
+            <span className="profile-stats__item"><strong>{accepted}</strong><span>принято</span></span>
+            <span className="profile-stats__item"><strong>{accuracy}%</strong><span>точность</span></span>
+          </div>
         )}
 
         <section className="attempts-section">
-          <div className="section-title"><div><span className="section-kicker">Решения</span><h2>Последние попытки</h2></div><Code2 size={19} /></div>
-          {(answers.loading || code.loading) && attempts.length === 0 ? <div className="content-state"><Spinner label="Загружаем попытки…" /></div> : !own ? <div className="content-state content-state--compact"><UserRound size={25} /><strong>История решений скрыта</strong><p>Публичная история появится после настройки правил доступа.</p></div> : attempts.length === 0 ? <div className="content-state content-state--compact"><Code2 size={25} /><strong>Попыток пока нет</strong><p>Откройте задачу и отправьте первое решение.</p></div> : <div className="attempt-list">{attempts.map((attempt) => <Link className="attempt-row" key={`${attempt.detail}-${attempt.id}`} to={attempt.href}><span className={`verdict-dot${attempt.verdict === "accepted" ? " is-accepted" : attempt.verdict === "queued" || attempt.verdict === "completed" ? " is-queued" : " is-wrong"}`} /><div><strong>Задача {attempt.taskId.slice(0, 8)}</strong><p>{attempt.detail}</p></div><div className="attempt-row__verdict"><span className={`verdict-pill${attempt.verdict === "accepted" ? " is-accepted" : attempt.verdict === "queued" || attempt.verdict === "completed" ? " is-queued" : " is-wrong"}`}>{verdictLabel(attempt.verdict)}</span><p>{formatDateTime(attempt.date)}</p></div></Link>)}
-            <Link className="attempts-more" to="/history">Вся история решений <ArrowRight size={16} /></Link>
-          </div>}
+          <div className="section-title"><div><span className="section-kicker">Решения</span><h2>Последние попытки</h2></div></div>
+          {(answers.loading || code.loading) && attempts.length === 0
+            ? <div className="content-state"><Spinner label="Загружаем попытки…" /></div>
+            : !own
+              ? <div className="content-state content-state--compact"><UserRound size={22} /><strong>История решений скрыта</strong><p>Публичная история появится после настройки правил доступа.</p></div>
+              : attempts.length === 0
+                ? <div className="content-state content-state--compact"><Code2 size={22} /><strong>Попыток пока нет</strong><p>Откройте задачу и отправьте первое решение.</p></div>
+                : <div className="attempt-list">{attempts.map((attempt) => (
+                    <Link className="attempt-row" key={`${attempt.detail}-${attempt.id}`} to={attempt.href}>
+                      <span className={`verdict-dot${attempt.verdict === "accepted" ? " is-accepted" : attempt.verdict === "queued" || attempt.verdict === "completed" ? " is-queued" : " is-wrong"}`} />
+                      <div><strong>Задача {attempt.taskId.slice(0, 8)}</strong><p>{attempt.detail}</p></div>
+                      <div className="attempt-row__verdict"><span className={`verdict-pill${attempt.verdict === "accepted" ? " is-accepted" : attempt.verdict === "queued" || attempt.verdict === "completed" ? " is-queued" : " is-wrong"}`}>{verdictLabel(attempt.verdict)}</span><p>{formatDateTime(attempt.date)}</p></div>
+                    </Link>
+                  ))}
+                  <Link className="attempts-more" to="/history">Вся история решений <ArrowRight size={14} /></Link>
+                </div>}
         </section>
       </div>
     </section>

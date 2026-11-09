@@ -12,6 +12,7 @@ import { CodeSubmissionDetailPage, SubmissionDetailPage, SubmissionHistoryPage, 
 import { HomePage } from "./pages/HomePage";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { CatalogBrowsePage, CatalogDetailPage } from "./pages/CatalogBrowsePage";
+import { PracticePage } from "./pages/PracticePage";
 import { SearchPage } from "./pages/SearchPage";
 
 export function AppRoutes() {
@@ -31,6 +32,7 @@ export function AppRoutes() {
       <Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
       <Route path="/tasks" element={<TasksPage />} />
       <Route path="/tasks/:id" element={<TaskSolvePage />} />
+      <Route path="/practice" element={<PrivateRoute><PracticePage /></PrivateRoute>} />
       <Route path="/history" element={<PrivateRoute><SubmissionHistoryPage /></PrivateRoute>} />
       <Route path="/history/:id" element={<PrivateRoute><SubmissionDetailPage /></PrivateRoute>} />
       <Route path="/code-submission/:id" element={<PrivateRoute><CodeSubmissionDetailPage /></PrivateRoute>} />

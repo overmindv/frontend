@@ -1,18 +1,9 @@
 import { useQuery } from "@apollo/client";
-import { ArrowRight, BookOpen, Building2, ClipboardList, GraduationCap, Search, Tags } from "lucide-react";
-import type { ComponentType } from "react";
+import { ArrowRight, Search } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
-import { SEARCH_QUERY, SEARCH_KINDS, kindDescription, kindHref, kindTitle, totalResults, type SearchKindKey, type SearchResults } from "../api/search";
+import { SEARCH_QUERY, SEARCH_KINDS, kindDescription, kindHref, kindTitle, totalResults, type SearchResults } from "../api/search";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 import { Spinner } from "../components/common/Spinner";
-
-const kindIcons: Record<SearchKindKey, ComponentType<{ size?: number }>> = {
-  universities: Building2,
-  programs: GraduationCap,
-  courses: BookOpen,
-  topics: Tags,
-  tasks: ClipboardList,
-};
 
 // SearchPage показывает результаты глобального поиска, сгруппированные и подписанные по виду.
 export function SearchPage() {
@@ -28,7 +19,7 @@ export function SearchPage() {
     return (
       <main className="page-shell">
         <div className="content-state">
-          <Search size={28} />
+          <Search size={22} />
           <strong>Поиск по всей платформе</strong>
           <p>Начните вводить запрос, чтобы найти вуз, программу, курс, тему или задачу.</p>
         </div>
@@ -64,24 +55,21 @@ export function SearchPage() {
           <h1>Результаты по запросу «{query}»</h1>
           <p>{loading ? "Ищем…" : total === 0 ? "Совпадений не найдено. Попробуйте изменить запрос." : `Найдено вариантов: ${total}`}</p>
         </div>
-        <Search size={28} />
       </header>
       {results && total > 0 && (
         <div className="search-groups">
           {SEARCH_KINDS.map((kind) => {
             const items = results[kind.key];
             if (items.length === 0) return null;
-            const Icon = kindIcons[kind.key];
             return (
               <section className="search-group" key={kind.key}>
-                <h2 className="search-group__title"><Icon size={18} /> {kind.label} <span>{items.length}</span></h2>
+                <h2 className="search-group__title">{kind.label} <span>{items.length}</span></h2>
                 <ul className="search-group__list">
                   {items.map((item) => (
                     <li key={item.id}>
                       <Link className="search-group__item" to={`${kindHref(kind.key)}/${item.id}`}>
-                        <Icon size={17} />
                         <span><strong>{kindTitle(item)}</strong><small>{kind.singular} · {kindDescription(item)}</small></span>
-                        <ArrowRight size={16} />
+                        <ArrowRight size={15} />
                       </Link>
                     </li>
                   ))}
