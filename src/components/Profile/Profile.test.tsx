@@ -1,5 +1,5 @@
 import { MockedProvider } from "@apollo/client/testing";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { GET_USER_QUERY } from "../../api/queries";
@@ -59,7 +59,7 @@ test("загружает и обновляет профиль", async () => {
   );
 
   const firstName = await screen.findByLabelText("Имя");
-  expect(firstName).toHaveValue("Старое");
+  await waitFor(() => expect(firstName).toHaveValue("Старое"));
   await user.clear(firstName);
   await user.type(firstName, "Новое");
   await user.click(screen.getByRole("button", { name: "Сохранить изменения" }));
