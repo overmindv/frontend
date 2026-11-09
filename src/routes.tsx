@@ -14,6 +14,8 @@ import { NotificationsPage } from "./pages/NotificationsPage";
 import { CatalogBrowsePage, CatalogDetailPage } from "./pages/CatalogBrowsePage";
 import { PracticePage } from "./pages/PracticePage";
 import { SearchPage } from "./pages/SearchPage";
+import { LeaderboardPage } from "./pages/LeaderboardPage";
+import { ComparePage } from "./pages/ComparePage";
 
 export function AppRoutes() {
   return (
@@ -40,6 +42,8 @@ export function AppRoutes() {
       <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
       <Route path="/profile/settings" element={<PrivateRoute><ProfileSettingsPage /></PrivateRoute>} />
       <Route path="/users/:id" element={<PrivateRoute><PublicUserProfilePage /></PrivateRoute>} />
+      <Route path="/leaderboard" element={<PrivateRoute><LeaderboardPage /></PrivateRoute>} />
+      <Route path="/compare/:id" element={<PrivateRoute><ComparePage /></PrivateRoute>} />
       <Route path="/admin/tasks" element={<PrivateRoute><AdminTasksPage /></PrivateRoute>} />
       <Route path="/admin/tasks/new" element={<PrivateRoute><AdminTaskFormPage create /></PrivateRoute>} />
       <Route path="/admin/tasks/:id" element={<PrivateRoute><AdminTaskFormPage /></PrivateRoute>} />

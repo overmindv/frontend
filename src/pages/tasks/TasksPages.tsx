@@ -23,6 +23,7 @@ import {
 } from "../../api/tasks";
 import { ErrorMessage } from "../../components/common/ErrorMessage";
 import { Spinner } from "../../components/common/Spinner";
+import { ShareButton } from "../../components/progress/ShareButton";
 import { useAuth } from "../../context/AuthContext";
 import { CodeSubmissionResult, ProgrammingTaskSolve } from "./ProgrammingTaskSolve";
 import { TaskSolveStatusBanner, useTaskSolveStatus } from "./useTaskSolveStatus";
@@ -228,6 +229,7 @@ export function TaskSolvePage() {
         <header>
           <span className="eyebrow">Задача</span>
           <h1>{task.title}</h1>
+          <ShareButton path={`/tasks/${task.id}`} title={task.title} label="Поделиться задачей" />
           <p>{task.statement}</p>
         </header>
 

@@ -2,6 +2,7 @@ import { MockedProvider } from "@apollo/client/testing";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { GET_USER_QUERY } from "../api/queries";
+import { MY_PROGRESS_QUERY } from "../api/progress";
 import { MY_IT_CODE_SUBMISSIONS_QUERY, MY_IT_SUBMISSIONS_QUERY } from "../api/tasks";
 import { AuthProvider } from "../context/AuthContext";
 import { authUser, meMock } from "../test/authMocks";
@@ -33,6 +34,15 @@ test("кодовая попытка в профиле ведёт на стран
         {
           request: { query: GET_USER_QUERY, variables: { id: "user-id" } },
           result: { data: { getUser: user } },
+        },
+        {
+          request: { query: MY_PROGRESS_QUERY },
+          result: { data: { myPracticeProgress: {
+            __typename: "PracticeProgress", userId: "user-id", public: false,
+            attempts: 92, acceptedAttempts: 50, solvedTasks: 44, score: 810, accuracyPercent: 54,
+            daily: [{ __typename: "PracticeProgressDay", date: "2026-11-09", attempts: 2, accepted: 1 }],
+            byDifficulty: [{ __typename: "PracticeProgressDifficulty", difficulty: "easy", solved: 44 }],
+          } } },
         },
         {
           request: { query: MY_IT_SUBMISSIONS_QUERY, variables: { taskId: null, pagination: { limit: 20, offset: 0 } } },
@@ -88,4 +98,6 @@ test("кодовая попытка в профиле ведёт на стран
   const link = await screen.findByRole("link", { name: /Задача progra/ });
   expect(link).toHaveAttribute("href", "/code-submission/code-submission-id");
   expect(screen.getAllByText("Принято").length).toBeGreaterThan(0);
+  expect(await screen.findByText("810")).toBeInTheDocument();
+  expect(screen.getByText("92")).toBeInTheDocument();
 });

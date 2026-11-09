@@ -100,6 +100,7 @@ export function Header() {
           <nav className="sidebar-nav sidebar-nav--secondary" aria-label="Личное">
             <span className="sidebar-nav__label">Личное</span>
             <NavLink to="/profile" onClick={closeMobile}>Профиль</NavLink>
+            <NavLink to="/leaderboard" onClick={closeMobile}>Рейтинг</NavLink>
           </nav>
         )}
 

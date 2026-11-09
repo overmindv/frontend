@@ -21,6 +21,7 @@ import {
 } from "../../api/tasks";
 import { ErrorMessage } from "../../components/common/ErrorMessage";
 import { Spinner } from "../../components/common/Spinner";
+import { ShareButton } from "../../components/progress/ShareButton";
 import { TaskSolveStatusBanner, type TaskSolveStats } from "./useTaskSolveStatus";
 
 const maxSourceFileSize = 256 * 1024;
@@ -245,6 +246,7 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
           <header>
             <span className="eyebrow">Задача по программированию</span>
             <h1>{task.title}</h1>
+            <ShareButton path={`/tasks/${task.id}`} title={task.title} label="Поделиться задачей" />
             <p>{task.statement}</p>
           </header>
 

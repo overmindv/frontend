@@ -5,6 +5,7 @@ import { type Topic } from "../api/catalog";
 import { DELETE_PRACTICE_GOAL_MUTATION, PRACTICE_GOAL_QUERY, PRACTICE_PLAN_QUERY, PRACTICE_TOPICS_QUERY, SAVE_PRACTICE_GOAL_MUTATION, type PracticeGoal, type PracticePlan } from "../api/practice";
 import { getErrorMessage } from "../api/errors";
 import { ErrorMessage } from "../components/common/ErrorMessage";
+import { ShareButton } from "../components/progress/ShareButton";
 
 const reasons: Record<string, string> = {
   START_TOPIC: "Начните знакомство с темой с этой задачи.",
@@ -247,6 +248,7 @@ export function PracticePage() {
             </div>
             <h3><Link to={`/tasks/${item.taskId}`}>{item.title}</Link></h3>
             <p>{reasons[item.reasonCode] ?? "Задача подобрана для практики выбранных тем."}</p>
+            <ShareButton path={`/tasks/${item.taskId}`} title={item.title} label={`Поделиться задачей ${item.title}`} />
           </li>)}
         </ol>}
       </section>}

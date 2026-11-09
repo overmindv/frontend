@@ -1,5 +1,6 @@
-import { useQuery } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import { ArrowRight, Code2, Settings, UserRound } from "lucide-react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { GET_USER_QUERY, PUBLIC_USER_QUERY } from "../api/queries";
 import { MY_IT_CODE_SUBMISSIONS_QUERY, MY_IT_SUBMISSIONS_QUERY, type ITCodeSubmission, type ITSubmission } from "../api/tasks";
@@ -7,7 +8,11 @@ import type { PublicUser, User } from "../api/types";
 import { Profile } from "../components/Profile/Profile";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 import { Spinner } from "../components/common/Spinner";
+import { ProgressOverview } from "../components/progress/ProgressOverview";
+import { ShareButton } from "../components/progress/ShareButton";
 import { useAuth } from "../context/AuthContext";
+import { MY_PROGRESS_QUERY, SET_PROGRESS_PUBLIC_MUTATION, USER_PROGRESS_QUERY, type PracticeProgress } from "../api/progress";
+import { getErrorMessage } from "../api/errors";
 
 // ProfilePage показывает публичную часть профиля и попытки владельца.
 export function ProfilePage() {
@@ -29,26 +34,41 @@ export function ProfileSettingsPage() {
 }
 
 function UserProfile({ userID, own }: { userID: string; own: boolean }) {
+  const [visibilityError, setVisibilityError] = useState<string | null>(null);
+  const [setProgressPublic, visibilityState] = useMutation<{ setMyPracticeStatsPublic: boolean }>(SET_PROGRESS_PUBLIC_MUTATION);
   // Свой профиль — полный запрос getUser; чужой — только публичный userProfile
   // (getUser отдаёт email/phone только владельцу/админу — IDOR-защита на gateway).
   const mine = useQuery<{ getUser: User }>(GET_USER_QUERY, { variables: { id: userID }, skip: !userID || !own });
   const foreign = useQuery<{ userProfile: PublicUser }>(PUBLIC_USER_QUERY, { variables: { id: userID }, skip: !userID || own });
   const answers = useQuery<{ myITSubmissions: { items: ITSubmission[] } }>(MY_IT_SUBMISSIONS_QUERY, { variables: { taskId: null, pagination: { limit: 20, offset: 0 } }, skip: !own });
   const code = useQuery<{ myITCodeSubmissions: { items: ITCodeSubmission[] } }>(MY_IT_CODE_SUBMISSIONS_QUERY, { variables: { taskId: null, pagination: { limit: 20, offset: 0 } }, skip: !own });
+  const mineProgress = useQuery<{ myPracticeProgress: PracticeProgress }>(MY_PROGRESS_QUERY, { skip: !own, fetchPolicy: "network-only" });
+  const peerProgress = useQuery<{ practiceProgress: PracticeProgress | null }>(USER_PROGRESS_QUERY, { variables: { userId: userID }, skip: own || !userID, fetchPolicy: "network-only" });
   const user = own ? mine : foreign;
   const profile = own ? mine.data?.getUser : foreign.data?.userProfile;
+  const progress = own ? mineProgress.data?.myPracticeProgress : peerProgress.data?.practiceProgress;
+  const progressLoading = own ? mineProgress.loading : peerProgress.loading;
+  const progressError = own ? mineProgress.error : peerProgress.error;
+
+  async function changeVisibility() {
+    if (!progress || !own) return;
+    setVisibilityError(null);
+    try {
+      await setProgressPublic({ variables: { public: !progress.public } });
+      await mineProgress.refetch();
+    } catch (cause) {
+      setVisibilityError(getErrorMessage(cause));
+    }
+  }
 
   if (user.loading && !profile) return <main className="page-shell content-state"><Spinner label="Загружаем профиль…" /></main>;
-  if (user.error || !profile) return <main className="page-shell"><ErrorMessage message={user.error?.message ?? "Профиль не найден"} /></main>;
+  if (user.error || !profile) return <main className="page-shell"><ErrorMessage message={user.error ? getErrorMessage(user.error) : "Профиль не найден"} /></main>;
 
   const attempts = [
     ...(answers.data?.myITSubmissions.items ?? []).map((item) => ({ id: item.id, taskId: item.taskId, date: item.createdAt, verdict: item.verdict, detail: `Тест · версия ${item.taskVersionNumber}`, href: `/history/${item.id}` })),
     ...(code.data?.myITCodeSubmissions.items ?? []).map((item) => ({ id: item.id, taskId: item.taskId, date: item.createdAt, verdict: item.verdict ?? item.status, detail: `${item.language === "python" ? "Python" : "Go"} · файл ${item.sourceFileName}`, href: `/code-submission/${item.id}` })),
   ].sort((left, right) => right.date.localeCompare(left.date));
   const displayName = [profile.firstName, profile.lastName].filter(Boolean).join(" ") || profile.username;
-  const total = attempts.length;
-  const accepted = attempts.filter((attempt) => attempt.verdict === "accepted").length;
-  const accuracy = total ? Math.round((accepted / total) * 100) : 0;
   const isSuperuser = "isSuperuser" in profile ? profile.isSuperuser : false;
   const roleLabel = isSuperuser ? "Суперпользователь" : profile.isAdmin ? "Администратор" : "Участник";
 
@@ -75,23 +95,30 @@ function UserProfile({ userID, own }: { userID: string; own: boolean }) {
             <h1>{displayName}</h1>
             <p>@{profile.username}</p>
           </div>
-          {own && <Link className="button button--ghost profile-settings-link" to="/profile/settings"><Settings size={15} /> Настройки</Link>}
+          <div className="profile-actions">
+            {own && <Link className="button button--ghost profile-settings-link" to="/profile/settings"><Settings size={15} /> Настройки</Link>}
+            {progress?.public && <ShareButton path={`/users/${profile.id}`} title={`Практика ${displayName}`} label="Поделиться статистикой" />}
+            {!own && progress && <Link className="button button--ghost" to={`/compare/${profile.id}`}>Сравнить с собой</Link>}
+            <Link className="button button--ghost" to="/leaderboard">Рейтинг</Link>
+          </div>
         </header>
 
-        {own && (
-          <div className="profile-stats">
-            <span className="profile-stats__item"><strong>{total}</strong><span>попыток</span></span>
-            <span className="profile-stats__item"><strong>{accepted}</strong><span>принято</span></span>
-            <span className="profile-stats__item"><strong>{accuracy}%</strong><span>точность</span></span>
-          </div>
-        )}
+        {progressLoading && !progress && <div className="content-state"><Spinner label="Загружаем статистику…" /></div>}
+        {progressError && <ErrorMessage message={getErrorMessage(progressError)} />}
+        {progress && <ProgressOverview progress={progress} />}
+        {!own && !progressLoading && !progressError && !progress && <div className="content-state content-state--compact"><UserRound size={22} /><strong>Статистика закрыта</strong><p>Пользователь пока не открыл свою статистику практики.</p></div>}
+        {own && progress && <section className="progress-visibility" aria-label="Публичность статистики">
+          <div><strong>Показывать статистику другим</strong><p>{progress.public ? "Другие участники видят сводку, могут сравнить её со своей, а вы участвуете в рейтинге." : "Сейчас сводка доступна только вам. Откройте её, чтобы участвовать в рейтинге и делиться ссылкой."}</p></div>
+          <button className="button" type="button" disabled={visibilityState.loading} onClick={() => { void changeVisibility(); }}>{visibilityState.loading ? "Сохраняем…" : progress.public ? "Закрыть статистику" : "Открыть статистику"}</button>
+          <ErrorMessage message={visibilityError} />
+        </section>}
 
         <section className="attempts-section">
           <div className="section-title"><div><span className="section-kicker">Решения</span><h2>Последние попытки</h2></div></div>
           {(answers.loading || code.loading) && attempts.length === 0
             ? <div className="content-state"><Spinner label="Загружаем попытки…" /></div>
             : !own
-              ? <div className="content-state content-state--compact"><UserRound size={22} /><strong>История решений скрыта</strong><p>Публичная история появится после настройки правил доступа.</p></div>
+              ? <div className="content-state content-state--compact"><UserRound size={22} /><strong>История попыток закрыта</strong><p>Подробные попытки видны только владельцу профиля.</p></div>
               : attempts.length === 0
                 ? <div className="content-state content-state--compact"><Code2 size={22} /><strong>Попыток пока нет</strong><p>Откройте задачу и отправьте первое решение.</p></div>
                 : <div className="attempt-list">{attempts.map((attempt) => (
