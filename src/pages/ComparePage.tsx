@@ -21,7 +21,7 @@ export function ComparePage() {
     ["Очки практики", own.score, other.score],
     ["Уникально решено задач", own.solvedTasks, other.solvedTasks],
     ["Проверенных попыток", own.attempts, other.attempts],
-    ["Успешных попыток", `${own.accuracyPercent}%`, `${other.accuracyPercent}%`],
+    ["Доля успешных попыток", `${own.accuracyPercent}%`, `${other.accuracyPercent}%`],
     ["Попыток за 30 дней", own.daily.reduce((sum, day) => sum + day.attempts, 0), other.daily.reduce((sum, day) => sum + day.attempts, 0)],
   ] : [];
 

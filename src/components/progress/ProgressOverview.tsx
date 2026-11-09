@@ -1,19 +1,23 @@
+import { useId } from "react";
 import type { PracticeProgress, PracticeProgressDay } from "../../api/progress";
 
 const difficultyLabels: Record<string, string> = { easy: "Начальные", medium: "Средние", hard: "Сложные" };
 
 export function ProgressOverview({ progress, compact = false }: { progress: PracticeProgress; compact?: boolean }) {
+  const instanceId = useId();
+  const activityId = `${instanceId}-activity`;
+  const difficultyId = `${instanceId}-difficulty`;
   const maxSolved = Math.max(1, ...progress.byDifficulty.map((item) => item.solved));
   return <div className={`progress-overview${compact ? " progress-overview--compact" : ""}`}>
     <div className="progress-metrics" aria-label="Показатели практики">
       <Metric value={progress.score.toLocaleString("ru-RU")} label="очков практики" accent />
       <Metric value={String(progress.solvedTasks)} label="задач решено" />
       <Metric value={String(progress.attempts)} label="проверенных попыток" />
-      <Metric value={`${progress.accuracyPercent}%`} label="успешных попыток" />
+      <Metric value={`${progress.accuracyPercent}%`} label="доля успешных попыток" />
     </div>
     {!compact && <div className="progress-visuals">
-      <section className="progress-panel" aria-labelledby="progress-activity-title">
-        <div className="progress-panel__heading"><div><span className="section-kicker">Динамика</span><h2 id="progress-activity-title">Активность за 30 дней</h2></div><small>по UTC</small></div>
+      <section className="progress-panel" aria-labelledby={activityId}>
+        <div className="progress-panel__heading"><div><span className="section-kicker">Динамика</span><h2 id={activityId}>Активность за 30 дней</h2></div><small>по UTC</small></div>
         <ActivityChart days={progress.daily} />
         <details className="progress-data"><summary>Показать данные по дням</summary>
           <div className="progress-data__scroll"><table aria-label="Данные активности по дням"><thead><tr><th scope="col">День</th><th scope="col">Попытки</th><th scope="col">Принято</th></tr></thead><tbody>
@@ -21,8 +25,8 @@ export function ProgressOverview({ progress, compact = false }: { progress: Prac
           </tbody></table></div>
         </details>
       </section>
-      <section className="progress-panel" aria-labelledby="progress-difficulty-title">
-        <div className="progress-panel__heading"><div><span className="section-kicker">Разбор</span><h2 id="progress-difficulty-title">Решено по сложности</h2></div></div>
+      <section className="progress-panel" aria-labelledby={difficultyId}>
+        <div className="progress-panel__heading"><div><span className="section-kicker">Разбор</span><h2 id={difficultyId}>Решено по сложности</h2></div></div>
         <div className="progress-difficulty">
           {progress.byDifficulty.map((item) => <div className="progress-difficulty__row" key={item.difficulty}>
             <div><span>{difficultyLabels[item.difficulty] ?? item.difficulty}</span><strong>{item.solved}</strong></div>

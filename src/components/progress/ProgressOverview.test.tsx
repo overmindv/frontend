@@ -15,8 +15,18 @@ test("сводка показывает полную серверную стат
   expect(screen.getByText("1 190")).toBeInTheDocument();
   expect(screen.getByText("63")).toBeInTheDocument();
   expect(screen.getByText("70%")).toBeInTheDocument();
+  expect(screen.getByText("доля успешных попыток")).toBeInTheDocument();
   expect(screen.getByRole("img", { name: /Активность за 30 дней/i })).toBeInTheDocument();
   await userEvent.click(screen.getByText("Показать данные по дням"));
   expect(screen.getByRole("table", { name: /Данные активности по дням/i })).toBeInTheDocument();
   expect(screen.getByText("Сложные")).toBeInTheDocument();
+});
+
+test("несколько сводок дают уникальные подписи панелей", () => {
+  const { container } = render(<><ProgressOverview progress={progress} /><ProgressOverview progress={progress} /></>);
+  const ids = [...container.querySelectorAll("[id]")].map((element) => element.id);
+  expect(new Set(ids).size).toBe(ids.length);
+  for (const panel of container.querySelectorAll("[aria-labelledby]")) {
+    expect(container.querySelector(`#${CSS.escape(panel.getAttribute("aria-labelledby") ?? "")}`)).toBeTruthy();
+  }
 });
