@@ -7,6 +7,7 @@ import { AuthProvider } from "../context/AuthContext";
 import { ThemeProvider } from "../context/ThemeContext";
 import { Header } from "../components/common/Header";
 import { AppRoutes } from "../routes";
+import { DELETE_PRACTICE_GOAL_MUTATION, PRACTICE_GOAL_QUERY, SAVE_PRACTICE_GOAL_MUTATION } from "../api/practice";
 import { meMock } from "../test/authMocks";
 
 beforeEach(() => {
@@ -35,7 +36,7 @@ const topicsMock = (items = topics, search = "", offset = 0): MockedResponse => 
   result: { data: { topics: items } },
 });
 const plan = {
-  __typename: "PracticePlan", policyVersion: "practice-v1", totalMinutes: 10, warnings: [],
+  __typename: "PracticePlan", policyVersion: "practice-v2", totalMinutes: 10, warnings: [],
   items: [{ __typename: "PracticePlanItem", taskId: "task-1", taskVersionId: "version-1",
     topicId: "topic-0", title: "Два указателя", difficulty: "easy", taskType: "single_choice",
     estimatedMinutes: 10, reasonCode: "START_TOPIC" }],
@@ -44,13 +45,74 @@ const planMock = (overrides: Partial<MockedResponse> = {}): MockedResponse => ({
   request: { query: planQuery, variables: { topicIds: ["topic-0"], minutes: 60 } },
   result: { data: { practicePlan: plan } }, ...overrides,
 });
+const goal = {
+  __typename: "PracticeGoal", topics: [{ __typename: "PracticeGoalTopic", id: "topic-0", title: "Тема 1", status: "active" }],
+  minutes: 60, revision: 1,
+};
+const goalMock = (saved: typeof goal | null = null): MockedResponse => ({
+  request: { query: PRACTICE_GOAL_QUERY }, result: { data: { myPracticeGoal: saved } },
+});
 function show(mocks: MockedResponse[] = [], authenticated = true) {
-  return render(<MockedProvider mocks={[meMock(authenticated ? undefined : null), ...mocks]}>
+  const goalMocks = mocks.some((mock) => mock.request.query === PRACTICE_GOAL_QUERY) ? [] : [goalMock()];
+  return render(<MockedProvider mocks={[meMock(authenticated ? undefined : null), ...goalMocks, ...mocks]}>
     <MemoryRouter initialEntries={["/practice"]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><AuthProvider><ThemeProvider>
       <Header /><AppRoutes />
     </ThemeProvider></AuthProvider></MemoryRouter>
   </MockedProvider>);
 }
+
+test("сохранённая цель загружает актуальную подборку при возвращении", async () => {
+  show([goalMock(goal), topicsMock(), planMock()]);
+  expect(await screen.findByText("Цель сохранена. При возвращении подборка обновится по вашим решениям.")).toBeInTheDocument();
+  expect(await screen.findByRole("link", { name: "Два указателя" })).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "Тема 1" })).toBeChecked();
+});
+
+test("недоступную тему сохранённой цели можно убрать без запуска подборки", async () => {
+  show([goalMock({ ...goal, topics: [{ ...goal.topics[0], status: "archived" }] }), topicsMock()]);
+  expect(await screen.findByRole("button", { name: "Убрать тему Тема 1" })).toBeInTheDocument();
+  expect(screen.getByText(/Сохранённая тема больше недоступна/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Подобрать практику" })).toBeDisabled();
+  await userEvent.click(screen.getByRole("button", { name: "Убрать тему Тема 1" }));
+  expect(screen.queryByRole("button", { name: "Убрать тему Тема 1" })).not.toBeInTheDocument();
+});
+
+test("поздняя загрузка цели не заменяет ручной выбор", async () => {
+  show([{ ...goalMock({ ...goal, topics: [{ ...goal.topics[0], id: "topic-1", title: "Тема 2" }] }), delay: 150 }, topicsMock()]);
+  await selectTopic();
+  fireEvent.change(screen.getByRole("spinbutton", { name: "Время на практику, минут" }), { target: { value: "30" } });
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  expect(screen.getByRole("checkbox", { name: "Тема 1" })).toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Тема 2" })).not.toBeChecked();
+  expect(screen.getByRole("spinbutton", { name: "Время на практику, минут" })).toHaveValue(30);
+});
+
+test("поздняя загрузка старой цели не отменяет новое сохранение", async () => {
+  show([{ ...goalMock(null), delay: 150 }, topicsMock(), {
+    request: { query: SAVE_PRACTICE_GOAL_MUTATION, variables: { topicIds: ["topic-0"], minutes: 60 } },
+    result: { data: { savePracticeGoal: goal } },
+  }]);
+  await selectTopic();
+  await userEvent.click(screen.getByRole("button", { name: "Сохранить цель" }));
+  expect(await screen.findByRole("button", { name: "Удалить сохранённую цель" })).toBeInTheDocument();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  expect(screen.getByRole("button", { name: "Удалить сохранённую цель" })).toBeInTheDocument();
+  expect(screen.getByText("Цель сохранена. При возвращении подборка обновится по вашим решениям.")).toBeInTheDocument();
+});
+
+test("студент сохраняет и удаляет цель", async () => {
+  show([topicsMock(), {
+    request: { query: SAVE_PRACTICE_GOAL_MUTATION, variables: { topicIds: ["topic-0"], minutes: 60 } },
+    result: { data: { savePracticeGoal: goal } },
+  }, {
+    request: { query: DELETE_PRACTICE_GOAL_MUTATION }, result: { data: { deletePracticeGoal: true } },
+  }]);
+  await selectTopic();
+  await userEvent.click(screen.getByRole("button", { name: "Сохранить цель" }));
+  expect(await screen.findByText("Цель сохранена. При возвращении подборка обновится по вашим решениям.")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Удалить сохранённую цель" }));
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Удалить сохранённую цель" })).not.toBeInTheDocument());
+});
 async function selectTopic() {
   await userEvent.click(await screen.findByRole("checkbox", { name: "Тема 1" }));
 }

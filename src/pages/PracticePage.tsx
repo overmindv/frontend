@@ -1,8 +1,8 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useApolloClient, useQuery } from "@apollo/client";
 import { Link } from "react-router-dom";
 import { type Topic } from "../api/catalog";
-import { PRACTICE_PLAN_QUERY, PRACTICE_TOPICS_QUERY, type PracticePlan } from "../api/practice";
+import { DELETE_PRACTICE_GOAL_MUTATION, PRACTICE_GOAL_QUERY, PRACTICE_PLAN_QUERY, PRACTICE_TOPICS_QUERY, SAVE_PRACTICE_GOAL_MUTATION, type PracticeGoal, type PracticePlan } from "../api/practice";
 import { getErrorMessage } from "../api/errors";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 
@@ -26,6 +26,7 @@ const topicPageSize = 20;
 
 export function PracticePage() {
   const client = useApolloClient();
+  const savedGoalQuery = useQuery<{ myPracticeGoal: PracticeGoal | null }>(PRACTICE_GOAL_QUERY, { fetchPolicy: "network-only" });
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
@@ -41,19 +42,83 @@ export function PracticePage() {
   const [minutes, setMinutes] = useState("60");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [goalError, setGoalError] = useState<string | null>(null);
+  const [savedGoal, setSavedGoal] = useState<PracticeGoal | null>(null);
+  const [savingGoal, setSavingGoal] = useState(false);
   const [result, setResult] = useState<{ plan: PracticePlan; budget: number } | null>(null);
   const requestId = useRef(0);
+  const goalLoaded = useRef(false);
+  const goalMutated = useRef(false);
+  const userEdited = useRef(false);
   const budget = Number(minutes);
   const validBudget = minutes.trim() !== "" && Number.isInteger(budget) && budget >= 10 && budget <= 240;
-  const validTopics = topicIds.length >= 1 && topicIds.length <= 5;
+  const validTopics = topicIds.length >= 1 && topicIds.length <= 5 && selectedTopics.every((topic) => topic.status === "active");
   const canSubmit = validBudget && validTopics && !loading;
+  const goalMatches = savedGoal !== null && savedGoal.minutes === budget && savedGoal.topics.map((topic) => topic.id).join(",") === topicIds.join(",");
+
+  useEffect(() => {
+    if (!savedGoalQuery.data || goalLoaded.current) return;
+    goalLoaded.current = true;
+    if (goalMutated.current) return;
+    const goal = savedGoalQuery.data.myPracticeGoal;
+    setSavedGoal(goal);
+    if (!goal || userEdited.current) return;
+    setSelectedTopics(goal.topics);
+    setMinutes(String(goal.minutes));
+    if (goal.topics.some((topic) => topic.status !== "active")) return;
+    const currentRequest = ++requestId.current;
+    setLoading(true);
+    void client.query<{ practicePlan: PracticePlan }>({
+      query: PRACTICE_PLAN_QUERY, variables: { topicIds: goal.topics.map((topic) => topic.id), minutes: goal.minutes }, fetchPolicy: "no-cache",
+    }).then((response) => {
+      if (currentRequest === requestId.current) setResult({ plan: response.data.practicePlan, budget: goal.minutes });
+    }).catch((cause: unknown) => {
+      if (currentRequest === requestId.current) setError(getErrorMessage(cause));
+    }).finally(() => {
+      if (currentRequest === requestId.current) setLoading(false);
+    });
+  }, [client, savedGoalQuery.data]);
 
   // Изменение формы инвалидирует и показанный результат, и ещё выполняющийся запрос.
   function clearResult() {
+    userEdited.current = true;
     requestId.current += 1;
     setResult(null);
     setError(null);
     setLoading(false);
+  }
+
+  async function saveGoal() {
+    if (!validBudget || !validTopics || savingGoal) return;
+    setSavingGoal(true);
+    setGoalError(null);
+    try {
+      const response = await client.mutate<{ savePracticeGoal: PracticeGoal }>({
+        mutation: SAVE_PRACTICE_GOAL_MUTATION, variables: { topicIds, minutes: budget },
+      });
+      if (response.data) {
+        goalMutated.current = true;
+        setSavedGoal(response.data.savePracticeGoal);
+      }
+    } catch (cause) {
+      setGoalError(getErrorMessage(cause));
+    } finally {
+      setSavingGoal(false);
+    }
+  }
+
+  async function deleteGoal() {
+    setSavingGoal(true);
+    setGoalError(null);
+    try {
+      await client.mutate({ mutation: DELETE_PRACTICE_GOAL_MUTATION });
+      goalMutated.current = true;
+      setSavedGoal(null);
+    } catch (cause) {
+      setGoalError(getErrorMessage(cause));
+    } finally {
+      setSavingGoal(false);
+    }
   }
 
   function findTopics() {
@@ -147,9 +212,16 @@ export function PracticePage() {
         <button className="button button--primary" type="submit" disabled={!canSubmit}>
           {loading ? "Подбираем…" : result ? "Пересчитать подборку" : "Подобрать практику"}
         </button>
+        <button className="button" type="button" disabled={!validBudget || !validTopics || savingGoal} onClick={() => { void saveGoal(); }}>
+          {savingGoal ? "Сохраняем…" : "Сохранить цель"}
+        </button>
+        {savedGoal && <button className="button" type="button" disabled={savingGoal} onClick={() => { void deleteGoal(); }}>Удалить сохранённую цель</button>}
       </div>
-      <p className="practice-note">Это предварительная подборка: выбранные темы не сохраняются как учебная цель.
-        После решения задач вернитесь сюда и пересчитайте подборку.</p>
+      {savedGoalQuery.loading && <p role="status">Загружаем сохранённую цель…</p>}
+      {goalMatches && <p className="practice-note">Цель сохранена. При возвращении подборка обновится по вашим решениям.</p>}
+      {selectedTopics.some((topic) => topic.status !== "active") && <p className="practice-note">Сохранённая тема больше недоступна. Уберите её и выберите активную тему.</p>}
+      <ErrorMessage message={goalError ?? (savedGoalQuery.error ? getErrorMessage(savedGoalQuery.error) : null)} />
+      <p className="practice-note">Подборка остаётся предварительной: сохранённая цель хранит темы и время занятия, но не подтверждает освоение темы.</p>
     </form>
     <div aria-live="polite" aria-busy={loading}>
       {loading && <p role="status">Подбираем практику…</p>}
