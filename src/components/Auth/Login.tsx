@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation } from "@apollo/client";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LOGIN_MUTATION } from "../../api/mutations";
 import { getErrorMessage } from "../../api/errors";
 import type { AuthPayload, LoginInput } from "../../api/types";
@@ -8,12 +8,15 @@ import { useAuth } from "../../context/AuthContext";
 import { ErrorMessage } from "../common/ErrorMessage";
 import { Spinner } from "../common/Spinner";
 
+import { authReturnPath } from "../../utils/authReturnPath";
+
 interface LoginData {
   login: AuthPayload;
 }
 
 export function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +34,7 @@ export function Login() {
       });
       if (!result.data?.login) throw new Error("Сервер вернул пустой ответ.");
       signIn(result.data.login);
-      navigate("/profile", { replace: true });
+      navigate(authReturnPath(location.state), { replace: true });
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
     }

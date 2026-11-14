@@ -1,8 +1,11 @@
 import type { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+
+import { authReturnPath } from "../utils/authReturnPath";
 
 export function PublicOnlyRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <Navigate to="/profile" replace /> : children;
+  const location = useLocation();
+  return isAuthenticated ? <Navigate to={authReturnPath(location.state)} replace /> : children;
 }

@@ -1,3 +1,4 @@
+import { ExternalTaskSearch } from "../../components/practice/ExternalTaskSearch";
 import { useMutation, useQuery } from "@apollo/client";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -6,11 +7,14 @@ import {
   COLLECTION_JOB_QUERY,
   COLLECTION_JOBS_QUERY,
   COLLECTION_SOURCES_QUERY,
+  PROBLEM_LISTS_QUERY,
   REJECT_TASK_CANDIDATE,
   START_COLLECTION,
   TASK_CANDIDATE_QUERY,
   TASK_CANDIDATES_QUERY,
   UPDATE_TASK_CANDIDATE,
+  type ProblemList,
+  type ProblemListPage,
   type TaskCandidate,
   type TaskCandidateList,
   type TaskCandidateReviewInput,
@@ -32,12 +36,14 @@ export function CollectedTasksPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const selectedJobID = searchParams.get("job") ?? "";
+  const [listId, setListId] = useState(() => searchParams.get("list") ?? "");
   const [offset, setOffset] = useState(0);
   const [status, setStatus] = useState<TaskCandidateStatus | "">("pending");
   const [sourceId, setSourceId] = useState("");
   const sources = useQuery<{ taskCollectionSources: { telegramChannels: string[]; websiteSources: string[] } }>(COLLECTION_SOURCES_QUERY, { skip: !isAdmin });
+  const lists = useQuery<{ problemLists: ProblemListPage }>(PROBLEM_LISTS_QUERY, { variables: { pagination: { limit: 50, offset: 0 } }, skip: !isAdmin });
   const candidates = useQuery<{ taskCandidates: TaskCandidateList }>(TASK_CANDIDATES_QUERY, {
-    variables: { filter: { ...(status ? { status } : {}), ...(sourceId ? { sourceId } : {}) }, pagination: { limit: pageSize, offset } },
+    variables: { filter: { ...(status ? { status } : {}), ...(sourceId ? { sourceId } : {}), ...(listId ? { problemListId: listId } : {}) }, pagination: { limit: pageSize, offset } },
     skip: !isAdmin,
     fetchPolicy: "cache-and-network",
   });
@@ -79,6 +85,7 @@ export function CollectedTasksPage() {
   const items = candidates.data?.taskCandidates.items ?? [];
 
   return <main className="page-shell catalog collected-page">
+      <ExternalTaskSearch />
     <header className="section-heading"><div><span className="eyebrow">Task hunter</span><h1>Собранные задачи</h1></div><p>Запускайте сбор и публикуйте только проверенные кандидаты.</p></header>
     <section className="panel">
       <h2>Новый сбор</h2>
@@ -95,10 +102,12 @@ export function CollectedTasksPage() {
     {startState.loading && <aside className="parsing-toast" aria-live="polite"><Spinner label="Задачи отправляются на парсинг…" /></aside>}
     <section className="panel"><h2>Последние запуски</h2>{jobs.error && <ErrorMessage message={getErrorMessage(jobs.error)} />}<div className="catalog-list">{jobs.data?.taskCollectionJobs.items.map((job) => <article className="catalog-row" key={job.id}><div><strong>{job.trigger === "manual" ? "Ручной сбор" : "Плановый сбор"}</strong><p>{formatDate(job.createdAt)} · {job.status}{job.requestedBy ? ` · инициатор ${job.requestedBy.slice(0, 8)}` : ""}</p></div><span>{job.importedTotal} новых · {job.duplicatesTotal} дублей · {job.errorCount} ошибок</span><Link className="text-link" to={`/admin/collected-tasks?job=${job.id}`}>Детали</Link></article>)}</div></section>
     {selectedJobID && <section className="panel"><h2>Детали запуска</h2>{selectedJob.error && <ErrorMessage message={getErrorMessage(selectedJob.error)} />}{selectedJob.loading && !selectedJob.data ? <Spinner label="Загружаем источники…" /> : <div className="catalog-list">{selectedJob.data?.taskCollectionJob.sources?.map((source) => <article className="catalog-row" key={source.id}><div><strong>{source.sourceId}</strong><p>{source.url || source.kind} · {source.status}</p>{source.errorMessage && <p>{source.errorMessage}</p>}</div><span>{source.collectedTotal} собрано · {source.importedTotal} новых · {source.duplicatesTotal} дублей · {source.invalidTotal} невалидных</span></article>)}</div>}</section>}
+    {!listId && <section className="panel"><h2>Списки задач</h2>{lists.error && <ErrorMessage message={getErrorMessage(lists.error)} />}<div className="catalog-list">{lists.data?.problemLists.items.map((item: ProblemList) => <article className="catalog-row" key={item.id}><div><strong>{item.name}</strong><p>{item.sourceUrl}</p></div><span>{item.memberCount} задач · {item.pendingCandidates} ожидают</span><Link className="text-link" to={`/admin/collected-tasks?list=${item.id}`}>Кандидаты</Link></article>)}</div></section>}
+    {listId && <section className="panel"><div className="section-heading"><div><h2>Кандидаты списка</h2></div><Link className="button button--ghost" to="/admin/collected-tasks">← Все списки</Link></div><p className="field-hint">{lists.data?.problemLists.items.find((item: ProblemList) => item.id === listId)?.name ?? "Загрузка названия…"}</p></section>}
     <section className="panel">
-      <div className="section-heading"><div><h2>Очередь модерации</h2></div><div className="inline-form"><label className="field"><span>Статус</span><select value={status} onChange={(event) => { setStatus(event.target.value as TaskCandidateStatus | ""); setOffset(0); }}><option value="">Все</option><option value="pending">Ожидают</option><option value="approved">Одобрены</option><option value="rejected">Отклонены</option></select></label><label className="field"><span>Источник</span><select value={sourceId} onChange={(event) => { setSourceId(event.target.value); setOffset(0); }}><option value="">Все</option><option value="codeforces">Codeforces</option><option value="leetcode">LeetCode</option><option value="coderun">CodeRun</option>{sources.data?.taskCollectionSources.telegramChannels.map((channel) => <option key={channel} value={`telegram:${channel}`}>@{channel}</option>)}</select></label></div></div>
+      <div className="section-heading"><div><h2>Очередь модерации</h2></div><div className="inline-form"><label className="field"><span>Статус</span><select value={status} onChange={(event) => { setStatus(event.target.value as TaskCandidateStatus | ""); setOffset(0); }}><option value="">Все</option><option value="pending">Ожидают</option><option value="approved">Одобрены</option><option value="rejected">Отклонены</option></select></label><label className="field"><span>Источник</span><select value={sourceId} onChange={(event) => { setSourceId(event.target.value); setOffset(0); }}><option value="">Все</option><option value="codeforces">Codeforces</option><option value="leetcode">LeetCode</option><option value="coderun">CodeRun</option>{sources.data?.taskCollectionSources.telegramChannels.map((channel) => <option key={channel} value={`telegram:${channel}`}>@{channel}</option>)}</select></label><label className="field"><span>Список задач</span><select value={listId} onChange={(event) => { setListId(event.target.value); setOffset(0); }}><option value="">Все</option>{lists.data?.problemLists.items.map((item: ProblemList) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label></div></div>
       {candidates.error && <ErrorMessage message={getErrorMessage(candidates.error)} />}
-      {candidates.loading && !candidates.data ? <Spinner label="Загружаем кандидатов…" /> : <div className="catalog-list">{items.map((candidate) => <article className="catalog-row" key={candidate.id}><div><strong>{candidate.title}</strong><p>{candidate.sourceName || candidate.sourceId} · revision {candidate.revision}</p></div><span className="status-tag">{candidate.status}</span><Link className="button button--ghost" to={`/admin/collected-tasks/${candidate.id}`}>Открыть</Link></article>)}</div>}
+      {candidates.loading && !candidates.data ? <Spinner label="Загружаем кандидатов…" /> : <div className="catalog-list">{items.map((candidate) => <article className="catalog-row" key={candidate.id}><div><strong>{candidate.title}</strong><p>{candidate.sourceName || candidate.sourceId} · revision {candidate.revision}{candidate.problemListId ? ` · ${lists.data?.problemLists.items.find((item: ProblemList) => item.id === candidate.problemListId)?.name ?? "список задач"}` : ""}</p></div><span className="status-tag">{candidate.status}</span><Link className="button button--ghost" to={`/admin/collected-tasks/${candidate.id}`}>Открыть</Link></article>)}</div>}
       <nav className="pagination"><button className="button button--ghost" disabled={!offset} onClick={() => setOffset(Math.max(0, offset - pageSize))}>← Назад</button><span>Страница {Math.floor(offset / pageSize) + 1}</span><button className="button button--ghost" disabled={items.length < pageSize} onClick={() => setOffset(offset + pageSize)}>Дальше →</button></nav>
     </section>
   </main>;

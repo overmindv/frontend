@@ -17,7 +17,9 @@ export function setUnauthenticatedHandler(handler: () => void) {
 
 // Сессия живёт в httpOnly cookie (`ovm_session`), которая приходит с ответом login/register
 // и отправляется браузером автоматически. Токен недоступен JS — это защищает от кражи через XSS.
-const errorLink = onError(({ graphQLErrors, networkError }) => {
+const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
+  // Отсутствие сессии при начальном me — штатное состояние гостя.
+  if (operation.getContext().optionalSession) return;
   const graphUnauthenticated = graphQLErrors?.some(
     (error) => error.extensions?.code === "UNAUTHENTICATED",
   );

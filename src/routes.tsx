@@ -1,3 +1,5 @@
+import { SavedPlansPage } from "./pages/SavedPlansPage";
+import { SavedPlanPage } from "./pages/SavedPlanPage";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { PublicOnlyRoute } from "./components/PublicOnlyRoute";
@@ -20,6 +22,8 @@ import { ComparePage } from "./pages/ComparePage";
 export function AppRoutes() {
   return (
     <Routes>
+<Route path="/plans" element={<PrivateRoute><SavedPlansPage /></PrivateRoute>} />
+<Route path="/plans/:id" element={<SavedPlanPage />} />
       <Route path="/" element={<HomePage />} />
       <Route path="/search" element={<SearchPage />} />
       <Route path="/universities" element={<CatalogBrowsePage kind="universities" />} />

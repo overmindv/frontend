@@ -29,6 +29,7 @@ export interface TaskCandidate {
   retrievedAt: string;
   collectionJobId: string;
   topicId?: string | null;
+  problemListId?: string | null;
   title: string;
   statement: string;
   difficulty: ITTaskDifficulty;
@@ -43,6 +44,33 @@ export interface TaskCandidate {
 
 export interface TaskCandidateList {
   items: TaskCandidate[];
+  limit: number;
+  offset: number;
+}
+
+export type ITTaskStatus = "draft" | "published" | "archived";
+
+export interface ProblemListMember {
+  taskId: string;
+  title: string;
+  difficulty: ITTaskDifficulty;
+  status: ITTaskStatus;
+}
+
+export interface ProblemList {
+  id: string;
+  name: string;
+  sourceId: string;
+  sourceUrl: string;
+  memberCount: number;
+  pendingCandidates: number;
+  createdAt: string;
+  updatedAt: string;
+  members?: ProblemListMember[];
+}
+
+export interface ProblemListPage {
+  items: ProblemList[];
   limit: number;
   offset: number;
 }
@@ -78,7 +106,7 @@ export interface TaskCollectionJob {
 const CANDIDATE_FIELDS = gql`
   fragment TaskCandidateFields on TaskCandidate {
     id status revision externalId sourceId sourceName sourceUrl sourcePublishedAt retrievedAt
-    collectionJobId topicId title statement difficulty tags constraints approvedTaskId rejectionReason createdAt updatedAt
+    collectionJobId topicId problemListId title statement difficulty tags constraints approvedTaskId rejectionReason createdAt updatedAt
     examples { input output explanation }
   }
 `;
@@ -125,6 +153,32 @@ export const START_COLLECTION = gql`
 
 export const ACKNOWLEDGE_COLLECTION_JOB = gql`
   mutation AcknowledgeTaskCollectionJob($id: ID!) { acknowledgeTaskCollectionJob(id: $id) }
+`;
+
+const PROBLEM_LIST_FIELDS = gql`
+  fragment ProblemListFields on ProblemList {
+    id name sourceId sourceUrl memberCount pendingCandidates createdAt updatedAt
+  }
+`;
+
+export const PROBLEM_LISTS_QUERY = gql`
+  query ProblemLists($pagination: PaginationInput) {
+    problemLists(pagination: $pagination) {
+      items { ...ProblemListFields }
+      limit offset
+    }
+  }
+  ${PROBLEM_LIST_FIELDS}
+`;
+
+export const PROBLEM_LIST_QUERY = gql`
+  query ProblemList($id: ID!) {
+    problemList(id: $id) {
+      ...ProblemListFields
+      members { taskId title difficulty status }
+    }
+  }
+  ${PROBLEM_LIST_FIELDS}
 `;
 
 export const TASK_CANDIDATES_QUERY = gql`

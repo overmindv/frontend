@@ -323,6 +323,7 @@ export function SubmissionHistoryPage() {
                 {submission.correct ? "OK" : "WA"}
               </div>
               <div className="history-row__main">
+                <Link to={`/tasks/${submission.taskId}`}>{submission.taskTitle || "Задача"}</Link>
                 <strong>{submission.correct ? "Ответ принят" : "Неверный ответ"}</strong>
                 <span>{formatDate(submission.createdAt)} · версия {submission.taskVersionNumber}</span>
               </div>

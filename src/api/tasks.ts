@@ -67,6 +67,7 @@ export interface ITTaskList {
 }
 
 export interface ITSubmission {
+  taskTitle?: string;
   id: string;
   userId: string;
   taskId: string;
@@ -208,6 +209,7 @@ const SUBMISSION_FIELDS = gql`
     userId
     taskId
     taskVersionId
+    taskTitle
     taskVersionNumber
     selectedOptionIds
     correctOptionIds

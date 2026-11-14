@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
 } from "react";
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [sessionRestored, setSessionRestored] = useState(false);
   const { data: meData, loading: meLoading } = useQuery<MeData>(ME_QUERY, {
     fetchPolicy: "network-only",
+    context: { optionalSession: true },
   });
   const [logoutMutation] = useMutation(LOGOUT_MUTATION);
 
@@ -57,12 +59,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setSessionRestored(true);
   }, [meData, meLoading]);
 
+  const logoutPending = useRef(false);
   const logout = useCallback(() => {
-    setUser(null);
-    // Уведомляем сервер, чтобы он очистил httpOnly cookie.
-    void logoutMutation().catch(() => undefined);
-    void apolloClient.clearStore();
-    navigate("/login", { replace: true });
+    if (logoutPending.current) return;
+    logoutPending.current = true;
+    // Сначала удаляем cookie: иначе быстрый переход восстанавливает прежнюю сессию.
+    void (async () => {
+      await logoutMutation({ context: { optionalSession: true } }).catch(() => undefined);
+      setUser(null);
+      await apolloClient.clearStore();
+      navigate("/login", { replace: true, state: null });
+      logoutPending.current = false;
+    })();
   }, [logoutMutation, navigate]);
 
   useEffect(() => setUnauthenticatedHandler(logout), [logout]);

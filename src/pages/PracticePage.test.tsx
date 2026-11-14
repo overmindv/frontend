@@ -7,7 +7,7 @@ import { AuthProvider } from "../context/AuthContext";
 import { ThemeProvider } from "../context/ThemeContext";
 import { Header } from "../components/common/Header";
 import { AppRoutes } from "../routes";
-import { DELETE_PRACTICE_GOAL_MUTATION, PRACTICE_GOAL_QUERY, SAVE_PRACTICE_GOAL_MUTATION } from "../api/practice";
+import { DELETE_PRACTICE_GOAL_MUTATION, PRACTICE_GOAL_QUERY, SAVE_PRACTICE_GOAL_MUTATION, PRACTICE_PLAN_QUERY } from "../api/practice";
 import { meMock } from "../test/authMocks";
 
 beforeEach(() => {
@@ -15,12 +15,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-const planQuery = gql`query PracticePlan($topicIds: [ID!]!, $minutes: Int!) {
-  practicePlan(topicIds: $topicIds, minutes: $minutes) {
-    policyVersion totalMinutes warnings
-    items { taskId taskVersionId topicId title difficulty taskType estimatedMinutes reasonCode }
-  }
-}`;
+const planQuery = PRACTICE_PLAN_QUERY;
 const topicsQuery = gql`query PracticeTopics($search: String!, $limit: Int!, $offset: Int!) {
   topics(filter: { search: $search, status: active }, pagination: { limit: $limit, offset: $offset }) {
     id title status
@@ -36,18 +31,18 @@ const topicsMock = (items = topics, search = "", offset = 0): MockedResponse => 
   result: { data: { topics: items } },
 });
 const plan = {
-  __typename: "PracticePlan", policyVersion: "practice-v2", totalMinutes: 10, warnings: [],
+  __typename: "PracticePlan", aiStatus: "NOT_REQUESTED", policyVersion: "practice-v3", requestedSessions: 3, totalPlannedMinutes: 10, sessions: [], topicInsights: [], totalMinutes: 10, warnings: [],
   items: [{ __typename: "PracticePlanItem", taskId: "task-1", taskVersionId: "version-1",
     topicId: "topic-0", title: "Два указателя", difficulty: "easy", taskType: "single_choice",
     estimatedMinutes: 10, reasonCode: "START_TOPIC" }],
 };
 const planMock = (overrides: Partial<MockedResponse> = {}): MockedResponse => ({
-  request: { query: planQuery, variables: { topicIds: ["topic-0"], minutes: 60 } },
+  request: { query: planQuery, variables: { topicIds: ["topic-0"], minutes: 60, sessionCount: 3 } },
   result: { data: { practicePlan: plan } }, ...overrides,
 });
 const goal = {
   __typename: "PracticeGoal", topics: [{ __typename: "PracticeGoalTopic", id: "topic-0", title: "Тема 1", status: "active" }],
-  minutes: 60, revision: 1,
+  minutes: 60, sessionCount: 3, revision: 1,
 };
 const goalMock = (saved: typeof goal | null = null): MockedResponse => ({
   request: { query: PRACTICE_GOAL_QUERY }, result: { data: { myPracticeGoal: saved } },
@@ -110,7 +105,7 @@ test("поздняя загрузка цели не заменяет ручно�
 
 test("поздняя загрузка старой цели не отменяет новое сохранение", async () => {
   const deferred = deferredGoal(null, [topicsMock(), {
-    request: { query: SAVE_PRACTICE_GOAL_MUTATION, variables: { topicIds: ["topic-0"], minutes: 60 } },
+    request: { query: SAVE_PRACTICE_GOAL_MUTATION, variables: { topicIds: ["topic-0"], minutes: 60, sessionCount: 3 } },
     result: { data: { savePracticeGoal: goal } },
   }]);
   show([], true, deferred.link);
@@ -124,7 +119,7 @@ test("поздняя загрузка старой цели не отменяе�
 
 test("студент сохраняет и удаляет цель", async () => {
   show([topicsMock(), {
-    request: { query: SAVE_PRACTICE_GOAL_MUTATION, variables: { topicIds: ["topic-0"], minutes: 60 } },
+    request: { query: SAVE_PRACTICE_GOAL_MUTATION, variables: { topicIds: ["topic-0"], minutes: 60, sessionCount: 3 } },
     result: { data: { savePracticeGoal: goal } },
   }, {
     request: { query: DELETE_PRACTICE_GOAL_MUTATION }, result: { data: { deletePracticeGoal: true } },
@@ -141,7 +136,7 @@ async function selectTopic() {
 
 test("страница доступна из личной навигации после входа", async () => {
   show([topicsMock()]);
-  expect(await screen.findByRole("heading", { name: "Подтянуть выбранные темы" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Индивидуальный план" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Практика" })).toHaveAttribute("href", "/practice");
 });
 
@@ -183,7 +178,7 @@ test("запрос выполняется по кнопке, результат 
 
 test("изменение формы скрывает результат и не возвращает старый ответ запроса", async () => {
   show([topicsMock(), planMock({ delay: 150 }), planMock({
-    request: { query: planQuery, variables: { topicIds: ["topic-0"], minutes: 30 } },
+    request: { query: planQuery, variables: { topicIds: ["topic-0"], minutes: 30, sessionCount: 3 } },
     result: { data: { practicePlan: { ...plan, items: [{ ...plan.items[0], title: "Новая подборка" }] } } },
   })]);
   await selectTopic();
@@ -252,7 +247,7 @@ test("серверный фильтр и страницы позволяют в�
     topicsMock(allTopics.slice(0, 21)), topicsMock(allTopics.slice(20, 41), "", 20),
     topicsMock(allTopics.slice(40, 61), "", 40), topicsMock(allTopics.slice(60), "", 60),
     topicsMock([], "Несуществующая"),
-    planMock({ request: { query: planQuery, variables: { topicIds: ["topic-0", "topic-60"], minutes: 60 } } }),
+    planMock({ request: { query: planQuery, variables: { topicIds: ["topic-0", "topic-60"], minutes: 60, sessionCount: 3 } } }),
   ]);
   await selectTopic();
   expect(screen.queryByRole("checkbox", { name: "Тема 21" })).not.toBeInTheDocument();
@@ -286,4 +281,34 @@ test("поиск не меняет выбранные темы и готовую
   expect(screen.getByRole("button", { name: "Убрать тему Тема 1" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Два указателя" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Пересчитать подборку" })).toBeEnabled();
+});
+
+test("горизонт сохраняется и маршрут объясняет недостающую базу", async () => {
+  const route = { ...plan, requestedSessions: 3, totalPlannedMinutes: 30,
+    sessions: [{ number: 1, totalMinutes: 10, items: plan.items }, { number: 2, totalMinutes: 20, items: [{ ...plan.items[0], taskId: "next", title: "Следующая задача" }] }],
+    topicInsights: [{ topicId: "topic-0", title: "Тема 1", isTarget: true, acceptedTasks: 0, failedTasks: 1, eligibleTasks: 2, plannedTasks: 0, remainingToReadiness: 3, recommendedDifficulty: "easy", minimumMinutes: 10, nextAction: "COMPLETE_PREREQUISITES", blockedBy: [{ id: "base", title: "Базовые алгоритмы" }] }],
+  };
+  show([goalMock(goal), topicsMock(), planMock({ result: { data: { practicePlan: route } } })]);
+  expect(await screen.findByText("Не хватает базы: Базовые алгоритмы.")).toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "Занятий в плане" })).toHaveValue("3");
+  expect(screen.getByRole("link", { name: "Начать первое занятие" })).toHaveAttribute("href", "/tasks/task-1");
+  expect(screen.getByText(/Занятие 2/)).toBeInTheDocument();
+  await userEvent.selectOptions(screen.getByRole("combobox", { name: "Занятий в плане" }), "1");
+  expect(screen.queryByText(/Не хватает базы:/)).not.toBeInTheDocument();
+});
+
+
+test.each(["GENERATED", "CACHED", "UNAVAILABLE"])("AI цель передаётся явно, статус %s отображается", async (status) => {
+  const user = userEvent.setup();
+  show([topicsMock(), planMock({
+    request: { query: planQuery, variables: { topicIds: ["topic-0"], minutes: 60, sessionCount: 3, goal: "Junior AI" } },
+    result: { data: { practicePlan: { ...plan, aiStatus: status } } },
+  })]);
+  await user.click(await screen.findByRole("checkbox", { name: "Тема 1" }));
+  await user.type(screen.getByLabelText("Цель для AI (необязательно)"), "Junior AI");
+  await user.click(screen.getByRole("button", { name: "Подобрать практику" }));
+  expect(await screen.findByRole("link", { name: "Два указателя" })).toBeInTheDocument();
+  if (status === "GENERATED") expect(screen.getByText("Порядок задач подобран AI по вашей цели.")).toBeInTheDocument();
+  if (status === "CACHED") expect(screen.getByText("AI-план уже готов: цель и результаты не изменились.")).toBeInTheDocument();
+  if (status === "UNAVAILABLE") expect(screen.getByText(/AI сейчас недоступен/)).toBeInTheDocument();
 });

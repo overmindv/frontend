@@ -177,6 +177,7 @@ export function AdminTaskFormPage({ create = false }: { create?: boolean }) {
 
   // removeOption удаляет вариант, сохраняя минимум два поля.
   const removeOption = (key: string) => {
+    setValidationError(null);
     setForm((current) => current.options.length <= 2 ? current : {
       ...current,
       options: current.options.filter((option) => option.key !== key),
@@ -185,6 +186,7 @@ export function AdminTaskFormPage({ create = false }: { create?: boolean }) {
 
   // changeTaskType нормализует правильные варианты при смене типа.
   const changeTaskType = (taskType: ITTaskType) => {
+    setValidationError(null);
     setForm((current) => {
       const firstCorrect = current.options.find((option) => option.isCorrect)?.key ?? current.options[0]?.key;
 
@@ -229,6 +231,7 @@ export function AdminTaskFormPage({ create = false }: { create?: boolean }) {
     return <main className="page-shell panel panel--center"><Spinner label="Загружаем редактор…" /></main>;
   }
 
+  const duplicateError = validationError === "Варианты ответа не должны повторяться.";
   const requestError = taskQuery.error ?? topicsQuery.error ?? createState.error ?? updateState.error;
 
   return (
@@ -244,7 +247,7 @@ export function AdminTaskFormPage({ create = false }: { create?: boolean }) {
         {!create && <span className="status-tag">{statusLabel(taskQuery.data?.adminITTask.status ?? "draft")}</span>}
       </header>
 
-      {validationError && <div className="message message--error" role="alert" tabIndex={-1} ref={validationRef}>{validationError}</div>}
+      {validationError && !duplicateError && <div className="message message--error" role="alert" tabIndex={-1} ref={validationRef}>{validationError}</div>}
       {requestError && <ErrorMessage message={getErrorMessage(requestError)} />}
 
       <form className="editor-form" onSubmit={(event) => void submitTask(event)}>
@@ -276,11 +279,12 @@ export function AdminTaskFormPage({ create = false }: { create?: boolean }) {
               <div><h2>Варианты ответа</h2><p>{form.taskType === "single_choice" ? "Отметьте ровно один правильный вариант." : "Отметьте все правильные варианты."}</p></div>
               <button className="button button--ghost button--small" disabled={form.options.length >= 20} onClick={addOption} type="button">+ Добавить вариант</button>
             </div>
+            {duplicateError && <div id="option-duplicates" className="message message--error" role="alert" tabIndex={-1} ref={validationRef}>{validationError}</div>}
             <div className="option-editor-list">
               {form.options.map((option, index) => (
                 <div className="option-editor" key={option.key}>
                   <span className="option-editor__index">{String(index + 1).padStart(2, "0")}</span>
-                  <input aria-label={`Вариант ${index + 1}`} maxLength={2000} placeholder="Текст варианта" required value={option.text} onChange={(event) => updateOption(option.key, { text: event.target.value })} />
+                  <input aria-invalid={duplicateError || undefined} aria-describedby={duplicateError ? "option-duplicates" : undefined} aria-label={`Вариант ${index + 1}`} maxLength={2000} placeholder="Текст варианта" required value={option.text} onChange={(event) => updateOption(option.key, { text: event.target.value })} />
                   <label className="correct-toggle">
                     <input checked={option.isCorrect} name={form.taskType === "single_choice" ? "correct" : undefined} onChange={(event) => selectCorrect(option.key, event.target.checked)} type={form.taskType === "single_choice" ? "radio" : "checkbox"} />
                     <span>верный</span>
