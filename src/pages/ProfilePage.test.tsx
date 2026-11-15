@@ -59,6 +59,7 @@ test("кодовая попытка в профиле ведёт на стран
                 items: [
                   {
                     __typename: "ITCodeSubmission",
+                    runMode: "graded",
                     id: "code-submission-id",
                     userId: "user-id",
                     taskId: "programming-id",

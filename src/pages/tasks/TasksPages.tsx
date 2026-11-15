@@ -208,7 +208,7 @@ export function TaskSolvePage() {
   }
 
   if (task.taskType === "programming") {
-    return <ProgrammingTaskSolve task={task} isAuthenticated={isAuthenticated} solveStatus={solveStats} />;
+    return <ProgrammingTaskSolve key={`${task.id}:${task.taskVersionId}`} task={task} isAuthenticated={isAuthenticated} solveStatus={solveStats} />;
   }
 
   return (
@@ -410,15 +410,15 @@ export function CodeSubmissionDetailPage() {
       <Link className="back-link" to="/history">← История попыток</Link>
       <section className={`result-card code-result-card ${accepted ? "is-accepted" : "is-wrong"}`}>
         <header>
-          <span className="eyebrow">Программное решение</span>
-          <h1>{accepted ? "Решение принято" : "Решение не принято"}</h1>
+          <span className="eyebrow">{submission.runMode === "samples" ? "Проверка примеров · без зачёта" : "Программное решение"}</span>
+          <h1>{submission.runMode === "samples" ? (accepted ? "Примеры пройдены" : "Примеры не пройдены") : (accepted ? "Решение принято" : "Решение не принято")}</h1>
           <p>{formatDate(submission.completedAt ?? submission.createdAt)}</p>
         </header>
         <dl className="result-metrics">
           <div><dt>Язык</dt><dd>{submission.language === "python" ? "Python" : "Go"}</dd></div>
           <div><dt>Файл</dt><dd>{submission.sourceFileName}</dd></div>
           <div><dt>Версия задачи</dt><dd>{submission.taskVersionNumber}</dd></div>
-          <div><dt>Решено тестов</dt><dd>{submission.tests.length > 0 ? `${passed} из ${submission.tests.length}` : "—"}</dd></div>
+          {submission.runMode === "samples" && <div><dt>Пройдено примеров</dt><dd>{submission.tests.length > 0 ? `${passed} из ${submission.tests.length}` : "—"}</dd></div>}
         </dl>
         <CodeSubmissionResult examples={task?.examples ?? []} submission={submission} />
         <footer>

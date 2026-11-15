@@ -202,6 +202,7 @@ test("пользователь отправляет файл programming-зад�
               input: {
                 taskVersionId: "programming-version-id",
                 idempotencyKey: "22222222-2222-4222-8222-222222222222",
+                runMode: "samples",
                 language: "python",
                 file: sourceFile,
               },
@@ -217,6 +218,7 @@ test("пользователь отправляет файл programming-зад�
                 taskVersionNumber: 1, taskTitle: "Название сохранённой версии",
                 executionId: "execution-id",
                 correlationId: "correlation-id",
+                runMode: "samples",
                 language: "python",
                 sourceFileName: "solution.py",
                 status: "completed",
@@ -269,9 +271,9 @@ test("пользователь отправляет файл programming-зад�
   await user.upload(screen.getByLabelText(/Выберите файл решения/), sourceFile);
 
   expect(screen.getByText(/готов к отправке/)).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "Отправить на проверку" }));
+  await user.click(screen.getByRole("button", { name: "Проверить примеры" }));
 
-  expect(await screen.findByText("✓ Решение принято")).toBeInTheDocument();
+  expect(await screen.findByText("✓ Примеры пройдены")).toBeInTheDocument();
   expect(screen.getByText("7 мс")).toBeInTheDocument();
 });
 
@@ -320,6 +322,7 @@ test("страница результата кодового решения по
                 taskVersionNumber: 1, taskTitle: "Название сохранённой версии",
                 executionId: "execution-id",
                 correlationId: "correlation-id",
+                runMode: "samples",
                 language: "python",
                 sourceFileName: "solution.py",
                 status: "completed",
@@ -360,7 +363,7 @@ test("страница результата кодового решения по
     </MockedProvider>,
   );
 
-  expect(await screen.findByRole("heading", { name: "Решение принято" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Примеры пройдены" })).toBeInTheDocument();
   // sourceCode is submission input only; the saved result exposes execution output.
   expect(screen.getByText("4", { selector: "pre" })).toBeInTheDocument();
   expect(screen.getByText("solution.py")).toBeInTheDocument();

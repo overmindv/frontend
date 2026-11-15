@@ -1,9 +1,9 @@
-import { MockedProvider } from "@apollo/client/testing";
-import { render, screen, within } from "@testing-library/react";
+import { MockedProvider, type MockedResponse } from "@apollo/client/testing";
+import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
-import { IT_TASK_QUERY, SUBMIT_IT_TASK_CODE } from "../../api/tasks";
+import { IT_TASK_QUERY, IT_CODE_SUBMISSION_QUERY, SUBMIT_IT_TASK_CODE, MY_IT_SUBMISSIONS_QUERY, MY_IT_CODE_SUBMISSIONS_QUERY, type ITTask, type ITCodeSubmission } from "../../api/tasks";
 import { AuthProvider } from "../../context/AuthContext";
 import { meMock } from "../../test/authMocks";
 import { TaskSolvePage } from "./TasksPages";
@@ -41,6 +41,7 @@ const completedCodeSubmission = {
   taskVersionNumber: 1,
   executionId: "execution-id",
   correlationId: "correlation-id",
+  runMode: "samples",
   language: "python",
   sourceFileName: "solution.py",
   status: "completed",
@@ -103,7 +104,8 @@ function renderSolve() {
                 input: {
                   taskVersionId: "programming-version-id",
                   idempotencyKey: "33333333-3333-4333-8333-333333333333",
-                  language: "python",
+                  runMode: "samples",
+  language: "python",
                   file: sourceFile,
                 },
               },
@@ -118,7 +120,8 @@ function renderSolve() {
                 input: {
                   taskVersionId: "programming-version-id",
                   idempotencyKey: "33333333-3333-4333-8333-333333333333",
-                  language: "python",
+                  runMode: "samples",
+  language: "python",
                   sourceCode: "print(input())",
                 },
               },
@@ -149,7 +152,7 @@ test("панель результата показывает сводку и с�
   // Файловый способ: переключаемся в режим «Загрузить файл», выбираем файл и отправляем.
   await user.click(screen.getByRole("tab", { name: "Загрузить файл" }));
   await user.upload(screen.getByLabelText(/Выберите файл решения/), sourceFile);
-  await user.click(screen.getByRole("button", { name: "Отправить на проверку" }));
+  await user.click(screen.getByRole("button", { name: "Проверить примеры" }));
 
   // Сводка и итоговый вердикт (чип сводки + чип второго кейса).
   expect(await screen.findByText("1 из 2 тестов прошло")).toBeInTheDocument();
@@ -188,8 +191,145 @@ test("код из консоли отправляется как sourceCode", as
   expect(screen.queryByLabelText(/Выберите файл решения/)).not.toBeInTheDocument();
 
   await user.type(screen.getByLabelText(/Код решения/), "print(input())");
-  await user.click(screen.getByRole("button", { name: "Отправить на проверку" }));
+  await user.click(screen.getByRole("button", { name: "Проверить примеры" }));
 
   // Результат sandbox отображается после ответа мутации с sourceCode.
   expect(await screen.findByText("1 из 2 тестов прошло")).toBeInTheDocument();
+});
+
+const attemptKey = "33333333-3333-4333-8333-333333333333";
+function renderActions(mocks: MockedResponse[]) {
+  vi.spyOn(crypto, "randomUUID").mockReturnValue(attemptKey);
+  render(<MockedProvider mocks={mocks} addTypename={false}>
+    <MemoryRouter><ProgrammingTaskSolve task={programmingTask as ITTask} isAuthenticated /></MemoryRouter>
+  </MockedProvider>);
+  return userEvent.setup();
+}
+function actionMock(runMode: "samples" | "graded", options: Partial<MockedResponse> = {}): MockedResponse {
+  return {
+    request: { query: SUBMIT_IT_TASK_CODE, variables: { taskId: programmingTask.id, input: {
+      taskVersionId: programmingTask.taskVersionId, idempotencyKey: attemptKey,
+      runMode, language: "python", sourceCode: "print(input())",
+    } } },
+    result: { data: { submitITTaskCode: { ...completedCodeSubmission, runMode } } },
+    ...options,
+  };
+}
+
+test.each(["samples", "graded"] as const)("%s: двойной клик создаёт один запрос", async (runMode) => {
+  const result = vi.fn(() => ({ data: { submitITTaskCode: { ...completedCodeSubmission, runMode } } }));
+  const user = renderActions([actionMock(runMode, { result, delay: 100 })]);
+  await user.type(screen.getByLabelText("Код решения"), "print(input())");
+  await user.dblClick(screen.getByRole("button", { name: runMode === "samples" ? "Проверить примеры" : "Отправить решение" }));
+  expect(screen.getByLabelText("Код решения")).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Отправить решение" })).toBeDisabled();
+  await waitFor(() => expect(result).toHaveBeenCalledTimes(1));
+});
+
+test("сетевой повтор сохраняет ключ, новый режим получает другой ключ", async () => {
+  const nextKey = "44444444-4444-4444-8444-444444444444";
+  const retry = vi.fn(() => ({ data: { submitITTaskCode: { ...completedCodeSubmission, verdict: "accepted" } } }));
+  const graded = actionMock("graded");
+  graded.request.variables!.input.idempotencyKey = nextKey;
+  const user = renderActions([
+    actionMock("samples", { result: undefined, error: new Error("private network details") }),
+    actionMock("samples", { result: retry }), graded,
+  ]);
+  vi.mocked(crypto.randomUUID).mockReturnValueOnce(attemptKey).mockReturnValue(nextKey);
+  await user.type(screen.getByLabelText("Код решения"), "print(input())");
+  await user.click(screen.getByRole("button", { name: "Проверить примеры" }));
+  await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+  expect(screen.queryByText("private network details")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Проверить примеры" }));
+  expect(await screen.findByText("✓ Примеры пройдены")).toBeInTheDocument();
+  expect(retry).toHaveBeenCalledTimes(1);
+  await user.click(screen.getByRole("button", { name: "Отправить решение" }));
+  expect(await screen.findByText("Общий результат проверки закрытых тестов")).toBeInTheDocument();
+  expect(crypto.randomUUID).toHaveBeenCalledTimes(2);
+});
+
+test("graded скрывает кейсы, вывод фаз и техническую ошибку даже в некорректном ответе", () => {
+  const privateOutput = "PRIVATE_TEST_CANARY";
+  render(<CodeSubmissionResult examples={[]} submission={{ ...completedCodeSubmission,
+    runMode: "graded", compilation: { ...completedCodeSubmission.execution, stdout: privateOutput },
+    execution: { ...completedCodeSubmission.execution, stderr: privateOutput },
+    tests: [{ ...completedCodeSubmission.tests[0], stdout: privateOutput }],
+    failure: { code: "PRIVATE_CODE", message: privateOutput },
+  } as ITCodeSubmission} />);
+  expect(screen.getByText("Общий результат проверки закрытых тестов")).toBeInTheDocument();
+  expect(screen.queryByText(/PRIVATE/)).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Тест/ })).not.toBeInTheDocument();
+  expect(screen.queryByText(/из .* тестов прошло/)).not.toBeInTheDocument();
+});
+
+test("Go-файл отправляется в graded", async () => {
+  const file = new File(["package main\nfunc main() {}"], "main.go", { type: "text/plain" });
+  const result = vi.fn(() => ({ data: { submitITTaskCode: { ...completedCodeSubmission, runMode: "graded", language: "go" } } }));
+  const user = renderActions([{
+    request: { query: SUBMIT_IT_TASK_CODE, variables: { taskId: programmingTask.id, input: {
+      taskVersionId: programmingTask.taskVersionId, idempotencyKey: attemptKey,
+      runMode: "graded", language: "go", file,
+    } } }, result,
+  }]);
+  await user.selectOptions(screen.getByLabelText("Язык программирования"), "go");
+  await user.click(screen.getByRole("tab", { name: "Загрузить файл" }));
+  await user.upload(screen.getByLabelText(/Выберите файл решения/), file);
+  await user.click(screen.getByRole("button", { name: "Отправить решение" }));
+  await waitFor(() => expect(result).toHaveBeenCalledTimes(1));
+});
+
+test.each(["samples", "graded"] as const)("история %s правильно определяет прогресс", async (runMode) => {
+  function Status() {
+    const { stats } = useTaskSolveStatus(programmingTask.id, true);
+    return <span>{stats?.status ?? "loading"}</span>;
+  }
+  render(<MockedProvider addTypename={false} mocks={[
+    { request: { query: MY_IT_SUBMISSIONS_QUERY, variables: { taskId: programmingTask.id, pagination: { limit: 100, offset: 0 } } }, result: { data: { myITSubmissions: { items: [], limit: 100, offset: 0 } } } },
+    { request: { query: MY_IT_CODE_SUBMISSIONS_QUERY, variables: { taskId: programmingTask.id, pagination: { limit: 100, offset: 0 } } }, result: { data: { myITCodeSubmissions: { items: [{ ...completedCodeSubmission, runMode, verdict: "accepted" }], limit: 100, offset: 0 } } } },
+  ]}><Status /></MockedProvider>);
+  expect(await screen.findByText(runMode === "samples" ? "none" : "solved")).toBeInTheDocument();
+});
+
+import { ProgrammingTaskSolve, CodeSubmissionResult } from "./ProgrammingTaskSolve";
+import { useTaskSolveStatus } from "./useTaskSolveStatus";
+
+
+test("polling завершает graded и новая попытка получает новый ключ", async () => {
+  const nextKey = "55555555-5555-4555-8555-555555555555";
+  const second = actionMock("graded");
+  second.request.variables!.input.idempotencyKey = nextKey;
+  const user = renderActions([
+    actionMock("graded", { result: { data: { submitITTaskCode: { ...completedCodeSubmission, runMode: "graded", status: "queued", verdict: null, tests: [] } } } }),
+    { request: { query: IT_CODE_SUBMISSION_QUERY, variables: { id: completedCodeSubmission.id } }, delay: 50,
+      result: { data: { itCodeSubmission: { ...completedCodeSubmission, runMode: "graded", verdict: "accepted" } } } },
+    second,
+  ]);
+  vi.mocked(crypto.randomUUID).mockReturnValueOnce(attemptKey).mockReturnValue(nextKey);
+  await user.type(screen.getByLabelText("Код решения"), "print(input())");
+  await user.click(screen.getByRole("button", { name: "Отправить решение" }));
+  expect(await screen.findByText("Решение поставлено в очередь…")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Проверить примеры" })).toBeDisabled();
+  expect(await screen.findByText("✓ Решение принято")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Отправить решение" }));
+  expect(await screen.findByText("✗ Неверный ответ")).toBeInTheDocument();
+  expect(crypto.randomUUID).toHaveBeenCalledTimes(2);
+});
+
+
+test("сто samples не вытесняют принятое решение со следующей страницы истории", async () => {
+  function Status() {
+    const { stats } = useTaskSolveStatus(programmingTask.id, true);
+    return <span>{stats?.status ?? "loading"}</span>;
+  }
+  const variables = { taskId: programmingTask.id, pagination: { limit: 100, offset: 0 } };
+  render(<MockedProvider addTypename={false} mocks={[
+    { request: { query: MY_IT_SUBMISSIONS_QUERY, variables }, result: { data: { myITSubmissions: { items: [], limit: 100, offset: 0 } } } },
+    { request: { query: MY_IT_CODE_SUBMISSIONS_QUERY, variables }, result: { data: { myITCodeSubmissions: {
+      items: Array.from({ length: 100 }, (_, i) => ({ ...completedCodeSubmission, id: `sample-${i}`, runMode: "samples" })), limit: 100, offset: 0,
+    } } } },
+    { request: { query: MY_IT_CODE_SUBMISSIONS_QUERY, variables: { ...variables, pagination: { limit: 100, offset: 100 } } }, result: { data: { myITCodeSubmissions: {
+      items: [{ ...completedCodeSubmission, runMode: "graded", verdict: "accepted" }], limit: 100, offset: 100,
+    } } } },
+  ]}><Status /></MockedProvider>);
+  expect(await screen.findByText("solved")).toBeInTheDocument();
 });

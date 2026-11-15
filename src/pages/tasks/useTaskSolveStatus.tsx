@@ -1,5 +1,5 @@
 import { useQuery } from "@apollo/client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, CircleDashed, XCircle } from "lucide-react";
 import {
   MY_IT_CODE_SUBMISSIONS_QUERY,
@@ -41,6 +41,28 @@ export function useTaskSolveStatus(taskId: string, enabled: boolean): {
     fetchPolicy: "network-only",
   });
 
+  const historyPage = useRef("");
+  useEffect(() => { historyPage.current = ""; }, [taskId]);
+  const codeItemsLoaded = code.data?.myITCodeSubmissions.items;
+  const fetchMoreCode = code.fetchMore;
+  useEffect(() => {
+    const offset = codeItemsLoaded?.length ?? 0;
+    if (!enabled || offset === 0 || offset % 100 !== 0) return;
+    const page = `${taskId}:${offset}`;
+    if (historyPage.current === page) return;
+    historyPage.current = page;
+    // Samples не должны вытеснять более раннее оцениваемое решение из прогресса.
+    void fetchMoreCode({
+      variables: { taskId, pagination: { limit: 100, offset } },
+      updateQuery: (previous, { fetchMoreResult }) => ({
+        myITCodeSubmissions: {
+          ...previous.myITCodeSubmissions,
+          items: [...previous.myITCodeSubmissions.items, ...(fetchMoreResult?.myITCodeSubmissions.items ?? [])],
+        },
+      }),
+    }).catch(() => undefined);
+  }, [enabled, taskId, codeItemsLoaded, fetchMoreCode]);
+
   const recordAnswer = (submission: ITSubmission) => {
     // Mutation success is already persisted. A failed/stale history refresh must
     // not erase it, and an idempotent retry must not count the same attempt twice.
@@ -56,7 +78,8 @@ export function useTaskSolveStatus(taskId: string, enabled: boolean): {
   const choiceItems = [...new Map([...historyItems, ...confirmedAnswers]
     .filter((item) => item.taskId === taskId)
     .map((item) => [item.id, item])).values()];
-  const codeItems = code.data?.myITCodeSubmissions.items ?? [];
+  const codeItems = (code.data?.myITCodeSubmissions.items ?? [])
+    .filter((item) => item.taskId === taskId && item.runMode === "graded");
 
   if ((answers.loading || code.loading) && choiceItems.length === 0) {
     return { loading: true, stats: null, recordAnswer };

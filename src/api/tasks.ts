@@ -5,6 +5,7 @@ export type ITTaskType = "single_choice" | "multiple_choice" | "programming";
 export type ITTaskDifficulty = "easy" | "medium" | "hard";
 export type ITSubmissionVerdict = "accepted" | "wrong_answer";
 export type ITProgrammingLanguage = "python" | "go";
+export type ITCodeRunMode = "samples" | "graded";
 export type ITCodeSubmissionStatus = "queued" | "completed";
 export type ITExecutionVerdict =
   | "accepted"
@@ -102,6 +103,7 @@ export interface ITExecutionFailure {
 }
 
 export interface ITCodeSubmission {
+  runMode: ITCodeRunMode;
   id: string;
   userId: string;
   taskId: string;
@@ -155,6 +157,7 @@ export interface ITSubmissionInput {
 }
 
 export interface ITCodeSubmissionInput {
+  runMode: ITCodeRunMode;
   taskVersionId: string;
   idempotencyKey: string;
   language: ITProgrammingLanguage;
@@ -224,6 +227,7 @@ const SUBMISSION_FIELDS = gql`
 
 const CODE_SUBMISSION_FIELDS = gql`
   fragment ITCodeSubmissionFields on ITCodeSubmission {
+    runMode
     id
     userId
     taskId

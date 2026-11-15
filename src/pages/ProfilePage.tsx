@@ -66,7 +66,7 @@ function UserProfile({ userID, own }: { userID: string; own: boolean }) {
 
   const attempts = [
     ...(answers.data?.myITSubmissions.items ?? []).map((item) => ({ id: item.id, taskId: item.taskId, date: item.createdAt, verdict: item.verdict, detail: `Тест · версия ${item.taskVersionNumber}`, href: `/history/${item.id}` })),
-    ...(code.data?.myITCodeSubmissions.items ?? []).map((item) => ({ id: item.id, taskId: item.taskId, date: item.createdAt, verdict: item.verdict ?? item.status, detail: `${item.language === "python" ? "Python" : "Go"} · файл ${item.sourceFileName}`, href: `/code-submission/${item.id}` })),
+    ...(code.data?.myITCodeSubmissions.items ?? []).map((item) => ({ id: item.id, taskId: item.taskId, date: item.createdAt, verdict: item.verdict ?? item.status, detail: `${item.runMode === "samples" ? "Примеры · без зачёта" : "Оцениваемое решение"} · ${item.language === "python" ? "Python" : "Go"} · файл ${item.sourceFileName}`, href: `/code-submission/${item.id}` })),
   ].sort((left, right) => right.date.localeCompare(left.date));
   const displayName = [profile.firstName, profile.lastName].filter(Boolean).join(" ") || profile.username;
   const isSuperuser = "isSuperuser" in profile ? profile.isSuperuser : false;

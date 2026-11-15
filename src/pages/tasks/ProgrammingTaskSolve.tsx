@@ -4,7 +4,6 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type FormEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { Link } from "react-router-dom";
@@ -12,6 +11,7 @@ import { getErrorMessage } from "../../api/errors";
 import {
   IT_CODE_SUBMISSION_QUERY,
   SUBMIT_IT_TASK_CODE,
+  type ITCodeRunMode,
   type ITCodeSubmission,
   type ITCodeSubmissionInput,
   type ITExecutionPhaseResult,
@@ -49,7 +49,8 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
   const [validationError, setValidationError] = useState("");
   const [submission, setSubmission] = useState<ITCodeSubmission | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const idempotencyKey = useRef<string | null>(null);
+  const idempotencyKeys = useRef<Partial<Record<ITCodeRunMode, string>>>({});
+  const inFlight = useRef(false);
   const splitContainer = useRef<HTMLDivElement>(null);
   const [split, setSplit] = useState(() => Number(localStorage.getItem("overmindv-solve-split")) || 50);
   const [draftCode, setDraftCode] = useState("");
@@ -73,17 +74,19 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
   });
 
   useEffect(() => {
-    if (resultState.data?.itCodeSubmission) {
-      setSubmission(resultState.data.itCodeSubmission);
+    const result = resultState.data?.itCodeSubmission;
+    if (result && result.id === submission?.id) {
+      setSubmission(result);
+      if (result.status === "completed") delete idempotencyKeys.current[result.runMode];
     }
-  }, [resultState.data]);
+  }, [resultState.data, submission?.id]);
 
   // resetAttempt очищает локальное состояние при смене языка или файла.
   const resetAttempt = () => {
     setSubmission(null);
     setValidationError("");
     submitState.reset();
-    idempotencyKey.current = null;
+    idempotencyKeys.current = {};
   };
 
   // handleLanguageChange начинает попытку для выбранного формата исходника.
@@ -151,19 +154,15 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
 
   // handleSubmit отправляет активный источник (код из консоли либо файл)
   // по версии задачи, которую видит пользователь.
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (submission?.status === "queued") {
-      return;
-    }
+  const handleSubmit = async (runMode: ITCodeRunMode) => {
+    if (inFlight.current || submission?.status === "queued" || !isAuthenticated) return;
 
     if (solveMode === "editor") {
       if (draftCode.trim() === "") {
         setValidationError("Введите код решения");
         return;
       }
-      if (draftCode.length > maxSourceFileSize) {
+      if (new TextEncoder().encode(draftCode).length > maxSourceFileSize) {
         setValidationError("Код не должен превышать 256 КБ");
         return;
       }
@@ -172,37 +171,46 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
       return;
     }
 
-    const key =
-      submission?.status === "completed"
-        ? crypto.randomUUID()
-        : (idempotencyKey.current ?? crypto.randomUUID());
+    const key = idempotencyKeys.current[runMode] ?? crypto.randomUUID();
+    idempotencyKeys.current[runMode] = key;
+    inFlight.current = true;
 
-    idempotencyKey.current = key;
+    try {
+      const response = await submitCode({
+        variables: {
+          taskId: task.id,
+          input:
+            solveMode === "editor"
+              ? {
+                  taskVersionId: task.taskVersionId,
+                  idempotencyKey: key,
+                  runMode,
+                  language,
+                  sourceCode: draftCode,
+                }
+              : {
+                  taskVersionId: task.taskVersionId,
+                  idempotencyKey: key,
+                  runMode,
+                  language,
+                  file: sourceFile as File,
+                },
+        },
+      });
 
-    const response = await submitCode({
-      variables: {
-        taskId: task.id,
-        input:
-          solveMode === "editor"
-            ? {
-                taskVersionId: task.taskVersionId,
-                idempotencyKey: key,
-                language,
-                sourceCode: draftCode,
-              }
-            : {
-                taskVersionId: task.taskVersionId,
-                idempotencyKey: key,
-                language,
-                file: sourceFile as File,
-              },
-      },
-    });
-
-    if (response.data?.submitITTaskCode) {
-      setSubmission(response.data.submitITTaskCode);
+      if (response.data?.submitITTaskCode) {
+        const result = response.data.submitITTaskCode;
+        setSubmission(result);
+        if (result.status === "completed") delete idempotencyKeys.current[runMode];
+      }
+    } catch {
+      // Apollo хранит ошибку для обезличенного сообщения. Ключ сохраняется для повтора.
+    } finally {
+      inFlight.current = false;
     }
   };
+
+  const busy = submitState.loading || submission?.status === "queued";
 
   const requestError =
     submitState.error ?? (submission?.status === "queued" ? resultState.error : undefined);
@@ -291,6 +299,7 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
 
           <div className="programming-solve-mode" aria-label="Способ решения" role="tablist">
             <button
+              disabled={busy}
               aria-selected={solveMode === "editor"}
               className={solveMode === "editor" ? "is-active" : ""}
               onClick={() => handleModeChange("editor")}
@@ -300,6 +309,7 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
               Ввести код
             </button>
             <button
+              disabled={busy}
               aria-selected={solveMode === "file"}
               className={solveMode === "file" ? "is-active" : ""}
               onClick={() => handleModeChange("file")}
@@ -310,12 +320,12 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
             </button>
           </div>
 
-          <div className={`code-editor-stub${solveMode === "file" ? " code-editor-stub--file" : ""}`}><div className="code-editor-stub__bar"><span>{defaultFileNameFor(language)}</span><small>{solveMode === "editor" ? "Будет отправлено" : "Используется файл"}</small></div><div className="code-editor-stub__body"><span aria-hidden="true">1<br />2<br />3<br />4<br />5<br />6<br />7<br />8<br />9<br />10</span><textarea aria-label="Код решения" onChange={handleEditorChange} placeholder={language === "python" ? "# Напишите решение здесь\ndef solve():\n    pass" : "// Напишите решение здесь\npackage main\n\nfunc main() {}"} spellCheck={false} value={draftCode} /></div></div>
+          <div className={`code-editor-stub${solveMode === "file" ? " code-editor-stub--file" : ""}`}><div className="code-editor-stub__bar"><span>{defaultFileNameFor(language)}</span><small>{solveMode === "editor" ? "Будет отправлено" : "Используется файл"}</small></div><div className="code-editor-stub__body"><span aria-hidden="true">1<br />2<br />3<br />4<br />5<br />6<br />7<br />8<br />9<br />10</span><textarea disabled={busy} aria-label="Код решения" onChange={handleEditorChange} placeholder={language === "python" ? "# Напишите решение здесь\ndef solve():\n    pass" : "// Напишите решение здесь\npackage main\n\nfunc main() {}"} spellCheck={false} value={draftCode} /></div></div>
 
-          <form className="code-upload-form" onSubmit={(event) => void handleSubmit(event)}>
+          <form className="code-upload-form" onSubmit={(event) => { event.preventDefault(); void handleSubmit("samples"); }}>
             <label className="field">
               <span>Язык программирования</span>
-              <select value={language} onChange={handleLanguageChange}>
+              <select disabled={busy} value={language} onChange={handleLanguageChange}>
                 <option value="python">Python</option>
                 <option value="go">Go</option>
               </select>
@@ -324,6 +334,7 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
             {solveMode === "file" && (
               <label className={`code-file-drop${sourceFile ? " has-file" : ""}`}>
                 <input
+                  disabled={busy}
                   accept={language === "python" ? ".py" : ".go"}
                   onChange={handleFileChange}
                   ref={fileInput}
@@ -344,21 +355,16 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
             {requestError && <ErrorMessage message={getErrorMessage(requestError)} />}
 
             {isAuthenticated ? (
-              <button
-                className="button button--primary"
-                disabled={!sourceReady || submitState.loading || submission?.status === "queued"}
-                type="submit"
-              >
-                {submitState.loading ? (
-                  <Spinner label="Отправляем…" />
-                ) : submission?.status === "queued" ? (
-                  "Ожидаем проверку…"
-                ) : submission?.status === "completed" ? (
-                  "Отправить ещё раз"
-                ) : (
-                  "Отправить на проверку"
-                )}
-              </button>
+              <>
+                <p>Проверка примеров — пробный запуск без зачёта. Отправка решения проверяет закрытые тесты и учитывается в прогрессе.</p>
+                <button className="button button--secondary" disabled={!sourceReady || busy} type="submit">
+                  Проверить примеры
+                </button>
+                <button className="button button--primary" disabled={!sourceReady || busy} type="button" onClick={() => void handleSubmit("graded")}>
+                  Отправить решение
+                </button>
+                {submitState.loading && <Spinner label="Отправляем…" />}
+              </>
             ) : (
               <Link className="button button--primary" to="/login">
                 Войти и отправить решение
@@ -460,7 +466,7 @@ export function CodeSubmissionResult({
   if (submission.status === "queued") {
     return (
       <section className="code-result code-result--queued" aria-live="polite">
-        <Spinner label="Решение поставлено в очередь…" />
+        <Spinner label={submission.runMode === "samples" ? "Примеры поставлены в очередь…" : "Решение поставлено в очередь…"} />
         <small>{submission.sourceFileName}</small>
       </section>
     );
@@ -468,7 +474,9 @@ export function CodeSubmissionResult({
 
   // Открытые примеры (с ожидаемым выводом) — их порядок совпадает с tests[].
   const openExamples = examples.filter((example) => example.output.trim() !== "");
+  const samples = submission.runMode === "samples";
   const accepted = submission.verdict === "accepted";
+  const label = samples && accepted ? "Примеры пройдены" : verdictLabel(submission.verdict);
   const passedCount = submission.tests.filter((test) => test.verdict === "accepted").length;
   const totalCount = submission.tests.length;
 
@@ -492,34 +500,33 @@ export function CodeSubmissionResult({
     >
       <header>
         <div>
-          <span>Результат</span>
+          <span>{samples ? "Проверка примеров · без зачёта" : "Оцениваемое решение"}</span>
           <span className={`code-status-chip ${accepted ? "is-accepted" : "is-wrong"}`}>
-            {accepted ? "✓" : "✗"} {verdictLabel(submission.verdict)}
+            {accepted ? "✓" : "✗"} {label}
           </span>
           <p className="code-summary">
-            {totalCount > 0
+            {samples && totalCount > 0
               ? `${passedCount} из ${totalCount} тестов прошло`
-              : verdictLabel(submission.verdict)}
+              : samples ? "Пробный запуск не учитывается в прогрессе" : "Общий результат проверки закрытых тестов"}
           </p>
         </div>
       </header>
 
       {submission.failure && (
         <div className="code-failure">
-          <strong>{submission.failure.code}</strong>
-          <span>{submission.failure.message}</span>
+          <span>Не удалось завершить проверку. Попробуйте ещё раз позже.</span>
         </div>
       )}
 
-      {submission.compilation && (
+      {samples && submission.compilation && (
         <ExecutionPhase title="Компиляция" phase={submission.compilation} />
       )}
 
-      {submission.execution && (
+      {samples && submission.execution && (
         <ExecutionPhase title="Выполнение" phase={submission.execution} />
       )}
 
-      {submission.tests.length > 0 && (
+      {samples && submission.tests.length > 0 && (
         <div className="code-tests">
           {submission.tests.map((test, index) => {
             const example = openExamples[index];
