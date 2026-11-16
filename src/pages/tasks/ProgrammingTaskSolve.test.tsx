@@ -333,3 +333,45 @@ test("сто samples не вытесняют принятое решение с�
   ]}><Status /></MockedProvider>);
   expect(await screen.findByText("solved")).toBeInTheDocument();
 });
+
+test.each([
+  ["queued", null, "pending"],
+  ["completed", "infrastructure_error", "unavailable"],
+  ["completed", "checker_error", "unavailable"],
+] as const)("история %s/%s не показывает ложный неверный ответ", async (status, verdict, expected) => {
+  function Status() {
+    const { stats } = useTaskSolveStatus(programmingTask.id, true);
+    return <span>{stats?.status ?? "loading"}</span>;
+  }
+  render(<MockedProvider addTypename={false} mocks={[
+    { request: { query: MY_IT_SUBMISSIONS_QUERY, variables: { taskId: programmingTask.id, pagination: { limit: 100, offset: 0 } } }, result: { data: { myITSubmissions: { items: [], limit: 100, offset: 0 } } } },
+    { request: { query: MY_IT_CODE_SUBMISSIONS_QUERY, variables: { taskId: programmingTask.id, pagination: { limit: 100, offset: 0 } } }, result: { data: { myITCodeSubmissions: { items: [{ ...completedCodeSubmission, runMode: "graded", status, verdict }], limit: 100, offset: 0 } } } },
+  ]}><Status /></MockedProvider>);
+  expect(await screen.findByText(expected)).toBeInTheDocument();
+});
+
+test("восстановленный terminal обновляет баннер очереди", async () => {
+  localStorage.setItem("overmindv:pending-code:user-id:programming-id:programming-version-id", JSON.stringify({
+    id: completedCodeSubmission.id, runMode: "graded", startedAt: Date.now(),
+  }));
+  render(<MockedProvider addTypename={false} mocks={[
+    meMock(),
+    { request: { query: IT_TASK_QUERY, variables: { id: programmingTask.id } }, result: { data: { itTask: programmingTask } } },
+    { request: { query: MY_IT_SUBMISSIONS_QUERY, variables: { taskId: programmingTask.id, pagination: { limit: 100, offset: 0 } } }, result: { data: { myITSubmissions: { items: [], limit: 100, offset: 0 } } } },
+    { request: { query: MY_IT_CODE_SUBMISSIONS_QUERY, variables: { taskId: programmingTask.id, pagination: { limit: 100, offset: 0 } } }, result: { data: { myITCodeSubmissions: { items: [{ ...completedCodeSubmission, runMode: "graded", status: "queued", verdict: null }], limit: 100, offset: 0 } } } },
+    { request: { query: IT_CODE_SUBMISSION_QUERY, variables: { id: completedCodeSubmission.id } }, delay: 100, result: { data: { itCodeSubmission: { ...completedCodeSubmission, runMode: "graded", status: "completed", verdict: "accepted" } } } },
+  ]}><MemoryRouter initialEntries={[`/tasks/${programmingTask.id}`]}><AuthProvider><Routes><Route path="/tasks/:id" element={<TaskSolvePage />} /></Routes></AuthProvider></MemoryRouter></MockedProvider>);
+  expect(await screen.findByText("Решение ожидает проверки")).toBeInTheDocument();
+  expect(await screen.findByText("Решена правильно")).toBeInTheDocument();
+  expect(screen.queryByText("Решение ожидает проверки")).not.toBeInTheDocument();
+});
+
+test("ошибка подготовки исходника показывает нейтральное сообщение", async () => {
+  vi.spyOn(crypto.subtle, "digest").mockRejectedValueOnce(new Error("private filesystem detail"));
+  const user = userEvent.setup();
+  render(<MockedProvider mocks={[]}><MemoryRouter><ProgrammingTaskSolve task={programmingTask as ITTask} isAuthenticated userId="user-id" /></MemoryRouter></MockedProvider>);
+  await user.type(screen.getByLabelText("Код решения"), "print(4)");
+  await user.click(screen.getByRole("button", { name: "Отправить решение" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Не удалось выполнить действие. Попробуйте ещё раз.");
+  expect(screen.queryByText("private filesystem detail")).not.toBeInTheDocument();
+});

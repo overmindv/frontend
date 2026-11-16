@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@apollo/client";
+import { useMutation } from "@apollo/client";
 import {
   useEffect,
   useRef,
@@ -9,7 +9,6 @@ import {
 import { Link } from "react-router-dom";
 import { getErrorMessage } from "../../api/errors";
 import {
-  IT_CODE_SUBMISSION_QUERY,
   SUBMIT_IT_TASK_CODE,
   type ITCodeRunMode,
   type ITCodeSubmission,
@@ -19,13 +18,13 @@ import {
   type ITProgrammingLanguage,
   type ITTask,
 } from "../../api/tasks";
+import { useSubmissionRecovery, submissionRetryKey } from "./useSubmissionRecovery";
 import { ErrorMessage } from "../../components/common/ErrorMessage";
 import { Spinner } from "../../components/common/Spinner";
 import { ShareButton } from "../../components/progress/ShareButton";
 import { TaskSolveStatusBanner, type TaskSolveStats } from "./useTaskSolveStatus";
 
 const maxSourceFileSize = 256 * 1024;
-const pollingInterval = 1500;
 
 type SolveMode = "editor" | "file";
 
@@ -37,20 +36,25 @@ function defaultFileNameFor(language: ITProgrammingLanguage): string {
 interface ProgrammingTaskSolveProps {
   task: ITTask;
   isAuthenticated: boolean;
+  userId?: string | null;
   solveStatus?: TaskSolveStats | null;
+  onCodeResult?: (submission: ITCodeSubmission) => void;
 }
 
 // ProgrammingTaskSolve показывает условие и способ отправки решения
 // (код из консоли либо файл) в двух равных колонках.
-export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: ProgrammingTaskSolveProps) {
+export function ProgrammingTaskSolve({ task, isAuthenticated, userId = null, solveStatus, onCodeResult }: ProgrammingTaskSolveProps) {
   const [language, setLanguage] = useState<ITProgrammingLanguage>("python");
   const [solveMode, setSolveMode] = useState<SolveMode>("editor");
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [validationError, setValidationError] = useState("");
-  const [submission, setSubmission] = useState<ITCodeSubmission | null>(null);
+  const scope = { userId: isAuthenticated ? userId : null, taskId: task.id, taskVersionId: task.taskVersionId };
+  const recovery = useSubmissionRecovery(scope);
+  const { submission } = recovery;
   const fileInput = useRef<HTMLInputElement>(null);
   const idempotencyKeys = useRef<Partial<Record<ITCodeRunMode, string>>>({});
   const inFlight = useRef(false);
+  const [preparing, setPreparing] = useState(false);
   const splitContainer = useRef<HTMLDivElement>(null);
   const [split, setSplit] = useState(() => Number(localStorage.getItem("overmindv-solve-split")) || 50);
   const [draftCode, setDraftCode] = useState("");
@@ -63,27 +67,13 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
     { taskId: string; input: ITCodeSubmissionInput }
   >(SUBMIT_IT_TASK_CODE);
 
-  const resultState = useQuery<
-    { itCodeSubmission: ITCodeSubmission },
-    { id: string }
-  >(IT_CODE_SUBMISSION_QUERY, {
-    variables: { id: submission?.id ?? "" },
-    skip: !submission || submission.status !== "queued",
-    fetchPolicy: "network-only",
-    pollInterval: submission?.status === "queued" ? pollingInterval : 0,
-  });
+  useEffect(() => { if (submission?.status === "completed") delete idempotencyKeys.current[submission.runMode]; }, [submission]);
 
-  useEffect(() => {
-    const result = resultState.data?.itCodeSubmission;
-    if (result && result.id === submission?.id) {
-      setSubmission(result);
-      if (result.status === "completed") delete idempotencyKeys.current[result.runMode];
-    }
-  }, [resultState.data, submission?.id]);
+  useEffect(() => { if (submission) onCodeResult?.(submission); }, [submission, onCodeResult]);
 
   // resetAttempt очищает локальное состояние при смене языка или файла.
   const resetAttempt = () => {
-    setSubmission(null);
+    recovery.clearResult();
     setValidationError("");
     submitState.reset();
     idempotencyKeys.current = {};
@@ -155,7 +145,7 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
   // handleSubmit отправляет активный источник (код из консоли либо файл)
   // по версии задачи, которую видит пользователь.
   const handleSubmit = async (runMode: ITCodeRunMode) => {
-    if (inFlight.current || submission?.status === "queued" || !isAuthenticated) return;
+    if (inFlight.current || recovery.pending || !isAuthenticated) return;
 
     if (solveMode === "editor") {
       if (draftCode.trim() === "") {
@@ -171,11 +161,17 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
       return;
     }
 
-    const key = idempotencyKeys.current[runMode] ?? crypto.randomUUID();
-    idempotencyKeys.current[runMode] = key;
+    const fallback = idempotencyKeys.current[runMode] ?? crypto.randomUUID();
+    idempotencyKeys.current[runMode] = fallback;
     inFlight.current = true;
-
+    setPreparing(true);
+    setValidationError("");
+    let mutationStarted = false;
     try {
+      const retryKey = await submissionRetryKey(scope, runMode, language, solveMode === "editor" ? draftCode : sourceFile as File, fallback);
+      const key = retryKey.key;
+      idempotencyKeys.current[runMode] = key;
+      mutationStarted = true;
       const response = await submitCode({
         variables: {
           taskId: task.id,
@@ -200,20 +196,22 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
 
       if (response.data?.submitITTaskCode) {
         const result = response.data.submitITTaskCode;
-        setSubmission(result);
+        recovery.track(result);
+        retryKey.clear();
         if (result.status === "completed") delete idempotencyKeys.current[runMode];
       }
     } catch {
-      // Apollo хранит ошибку для обезличенного сообщения. Ключ сохраняется для повтора.
+      // До мутации Apollo ещё не знает об ошибках чтения/fingerprint.
+      if (!mutationStarted) setValidationError("Не удалось подготовить код к отправке. Попробуйте ещё раз.");
     } finally {
       inFlight.current = false;
+      setPreparing(false);
     }
   };
 
-  const busy = submitState.loading || submission?.status === "queued";
+  const busy = preparing || submitState.loading || recovery.pending;
 
-  const requestError =
-    submitState.error ?? (submission?.status === "queued" ? resultState.error : undefined);
+  const requestError = submitState.error;
 
   // updateSplit изменяет ширину условия и сохраняет её для следующих задач.
   const updateSplit = (next: number) => {
@@ -372,7 +370,16 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, solveStatus }: Pro
             )}
           </form>
 
-          <CodeSubmissionResult examples={task.examples} submission={submission} />
+          {recovery.pending && (
+            <section className="code-result code-result--queued" aria-live="polite">
+              <p>{recovery.phase === "paused" ? "Проверка занимает больше времени. Автообновление приостановлено, отправка сохранена."
+                : recovery.phase === "unavailable" ? "Статус временно недоступен. Отправка сохранена; повторно отправлять код не нужно."
+                : "Отправка сохранена. Ожидаем результат проверки…"}</p>
+              {(recovery.phase === "paused" || recovery.phase === "unavailable") && <button className="button button--secondary" type="button" onClick={recovery.retry}>Проверить статус</button>}
+            </section>
+          )}
+          <div className="code-result"><Link className="back-link" to="/history">История решений</Link></div>
+          {(submission || !recovery.pending) && <CodeSubmissionResult examples={task.examples} submission={submission} />}
         </aside>
       </div>
     </main>

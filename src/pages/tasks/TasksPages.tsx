@@ -140,7 +140,7 @@ export function TasksPage() {
 // TaskSolvePage показывает версию теста и отправляет выбранные варианты.
 export function TaskSolvePage() {
   const { id = "" } = useParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userId, isLoading: authLoading } = useAuth();
   const [selected, setSelected] = useState<string[]>([]);
   const [result, setResult] = useState<ITSubmission | null>(null);
   const idempotencyKey = useRef<string | null>(null);
@@ -152,7 +152,7 @@ export function TaskSolvePage() {
     { taskId: string; input: ITSubmissionInput }
   >(SUBMIT_IT_TASK_ANSWER);
   const task = data?.itTask;
-  const { stats: solveStats, recordAnswer } = useTaskSolveStatus(id, isAuthenticated);
+  const { stats: solveStats, recordAnswer, recordCode } = useTaskSolveStatus(id, isAuthenticated, userId);
 
   // toggleOption обновляет множество выбранных ответов и начинает новую попытку.
   const toggleOption = (optionID: string) => {
@@ -208,7 +208,8 @@ export function TaskSolvePage() {
   }
 
   if (task.taskType === "programming") {
-    return <ProgrammingTaskSolve key={`${task.id}:${task.taskVersionId}`} task={task} isAuthenticated={isAuthenticated} solveStatus={solveStats} />;
+    if (authLoading) return <main className="page-shell panel"><Spinner /></main>;
+    return <ProgrammingTaskSolve key={`${userId}:${task.id}:${task.taskVersionId}`} task={task} isAuthenticated={isAuthenticated} userId={userId} solveStatus={solveStats} onCodeResult={recordCode} />;
   }
 
   return (

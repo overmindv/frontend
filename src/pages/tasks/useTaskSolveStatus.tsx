@@ -1,5 +1,5 @@
 import { useQuery } from "@apollo/client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, CircleDashed, XCircle } from "lucide-react";
 import {
   MY_IT_CODE_SUBMISSIONS_QUERY,
@@ -9,7 +9,7 @@ import {
 } from "../../api/tasks";
 
 // TaskSolveStatusKind описывает, как текущий пользователь условие по задаче.
-export type TaskSolveStatusKind = "solved" | "attempted" | "none";
+export type TaskSolveStatusKind = "solved" | "attempted" | "pending" | "unavailable" | "none";
 
 // TaskSolveStats — сводные показатели, выводимые из попыток пользователя по задаче.
 export interface TaskSolveStats {
@@ -24,11 +24,16 @@ export interface TaskSolveStats {
 
 // useTaskSolveStatus собирает историю текущего пользователя по задаче и сводит её
 // в краткий статус для бейджа и метрик. При неавторизованном доступе ничего не грузит.
-export function useTaskSolveStatus(taskId: string, enabled: boolean): {
+export function useTaskSolveStatus(taskId: string, enabled: boolean, userId?: string | null): {
   loading: boolean;
   stats: TaskSolveStats | null;
   recordAnswer: (submission: ITSubmission) => void;
+  recordCode: (submission: ITCodeSubmission) => void;
 } {
+  const [confirmedCode, setConfirmedCode] = useState<ITCodeSubmission[]>([]);
+  const recordCode = useCallback((submission: ITCodeSubmission) => {
+    setConfirmedCode((current) => [...current.filter((item) => item.id !== submission.id), submission]);
+  }, []);
   const [confirmedAnswers, setConfirmedAnswers] = useState<ITSubmission[]>([]);
   const answers = useQuery<{ myITSubmissions: { items: ITSubmission[] } }>(MY_IT_SUBMISSIONS_QUERY, {
     variables: { taskId, pagination: { limit: 100, offset: 0 } },
@@ -71,18 +76,19 @@ export function useTaskSolveStatus(taskId: string, enabled: boolean): {
   };
 
   if (!enabled) {
-    return { loading: false, stats: null, recordAnswer };
+    return { loading: false, stats: null, recordAnswer, recordCode };
   }
 
   const historyItems = (answers.data ?? answers.previousData)?.myITSubmissions.items ?? [];
   const choiceItems = [...new Map([...historyItems, ...confirmedAnswers]
     .filter((item) => item.taskId === taskId)
     .map((item) => [item.id, item])).values()];
-  const codeItems = (code.data?.myITCodeSubmissions.items ?? [])
-    .filter((item) => item.taskId === taskId && item.runMode === "graded");
+  const codeItems = [...new Map([...(code.data?.myITCodeSubmissions.items ?? []), ...confirmedCode]
+    .filter((item) => item.taskId === taskId && item.runMode === "graded" && (!userId || item.userId === userId))
+    .map((item) => [item.id, item])).values()];
 
-  if ((answers.loading || code.loading) && choiceItems.length === 0) {
-    return { loading: true, stats: null, recordAnswer };
+  if ((answers.loading || code.loading) && choiceItems.length === 0 && codeItems.length === 0) {
+    return { loading: true, stats: null, recordAnswer, recordCode };
   }
 
   const attempted = choiceItems.length + codeItems.length;
@@ -90,23 +96,27 @@ export function useTaskSolveStatus(taskId: string, enabled: boolean): {
     choiceItems.filter((item) => item.verdict === "accepted").length +
     codeItems.filter((item) => item.verdict === "accepted").length;
 
-  const completedCode = codeItems.filter((item) => item.status === "completed");
+  const completedCode = codeItems.filter((item) => item.status === "completed" && item.verdict !== "infrastructure_error" && item.verdict !== "checker_error");
+  const evaluated = choiceItems.length + completedCode.length;
   const codeTotalTests = completedCode.reduce((sum, item) => sum + item.tests.length, 0);
   const codePassedTests = completedCode.reduce(
     (sum, item) => sum + item.tests.filter((test) => test.verdict === "accepted").length,
     0,
   );
 
-  const status: TaskSolveStatusKind = attempted === 0 ? "none" : accepted > 0 ? "solved" : "attempted";
+  const status: TaskSolveStatusKind = accepted > 0 ? "solved"
+    : codeItems.some((item) => item.status === "queued") ? "pending"
+    : evaluated > 0 ? "attempted" : codeItems.length > 0 ? "unavailable" : "none";
 
   return {
     loading: false,
     recordAnswer,
+    recordCode,
     stats: {
       status,
       attempted,
       accepted,
-      accuracy: attempted ? Math.round((accepted / attempted) * 100) : 0,
+      accuracy: evaluated ? Math.round((accepted / evaluated) * 100) : 0,
       hasCode: codeItems.length > 0,
       codeTestsPassed: codePassedTests,
       codeTestsTotal: codeTotalTests,
@@ -119,6 +129,8 @@ export function TaskSolveStatusBanner({ stats }: { stats: TaskSolveStats }) {
   const config = {
     solved: { Icon: CheckCircle2, label: "Решена правильно", cls: "is-solved" },
     attempted: { Icon: XCircle, label: "Есть решение, но неверное", cls: "is-wrong" },
+    pending: { Icon: CircleDashed, label: "Решение ожидает проверки", cls: "is-none" },
+    unavailable: { Icon: CircleDashed, label: "Проверка временно недоступна", cls: "is-none" },
     none: { Icon: CircleDashed, label: "Ещё не решалась", cls: "is-none" },
   }[stats.status];
   const Icon = config.Icon;
