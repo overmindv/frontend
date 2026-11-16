@@ -1,0 +1,502 @@
+type User {
+  id: ID!
+  email: String!
+  username: String!
+  firstName: String!
+  lastName: String!
+  birthDate: String
+  phone: String
+  avatar: UserAvatar
+  roles: [String!]!
+  isAdmin: Boolean!
+  isSuperuser: Boolean!
+  createdAt: String!
+  updatedAt: String!
+}
+
+scalar Upload
+
+type UserAvatar {
+  fileId: ID!
+  smallUrl: String!
+  mediumUrl: String!
+}
+
+type PublicUser {
+  id: ID!
+  username: String!
+  firstName: String!
+  lastName: String!
+  avatar: UserAvatar
+  isAdmin: Boolean!
+  createdAt: String!
+}
+
+type PublicUserConnection {
+  items: [PublicUser!]!
+  limit: Int!
+  offset: Int!
+}
+
+enum MediaPurpose { avatar catalog_logo content_image attachment archive }
+enum MediaVisibility { public private }
+enum MediaStatus { pending_upload quarantined processing ready rejected deleted }
+enum MediaUploadMode { single multipart }
+
+type MediaFormField { name: String!, value: String! }
+type MediaUpload {
+  fileId: ID!
+  mode: MediaUploadMode!
+  url: String!
+  fields: [MediaFormField!]!
+  headers: [MediaFormField!]!
+  multipartUploadId: String!
+  partSize: Int!
+  expiresAt: String!
+}
+type MediaUploadPart { partNumber: Int!, url: String!, expiresAt: String! }
+type MediaFile {
+  id: ID!
+  ownerUserId: ID!
+  purpose: MediaPurpose!
+  visibility: MediaVisibility!
+  originalName: String!
+  declaredContentType: String!
+  detectedContentType: String!
+  sizeBytes: Int!
+  status: MediaStatus!
+  failureCode: String!
+  publicUrl: String!
+  createdAt: String!
+  updatedAt: String!
+  deletedAt: String
+}
+type MediaFileConnection { items: [MediaFile!]!, limit: Int!, offset: Int! }
+type MediaDownload { url: String!, expiresAt: String! }
+
+input CreateMediaUploadInput {
+  originalName: String!
+  contentType: String!
+  sizeBytes: Int!
+  checksumSha256: String!
+  purpose: MediaPurpose!
+  visibility: MediaVisibility!
+}
+input CompleteMediaPartInput { partNumber: Int!, etag: String! }
+input CompleteMediaUploadInput { fileId: ID!, parts: [CompleteMediaPartInput!] = [] }
+input MediaFileFilter { status: MediaStatus }
+
+enum CatalogStatus { draft active hidden archived }
+enum DegreeLevel { bachelor master specialist phd other }
+enum TopicDifficulty { intro basic medium hard advanced }
+
+type University { id: ID!, name: String!, shortName: String!, city: String!, country: String!, websiteUrl: String!, logoFileId: ID, status: CatalogStatus!, createdAt: String!, updatedAt: String! }
+type Program { id: ID!, universityId: ID, name: String!, shortName: String!, faculty: String!, degreeLevel: DegreeLevel!, startYear: Int, status: CatalogStatus!, createdAt: String!, updatedAt: String! }
+type Course { id: ID!, programId: ID, name: String!, slug: String!, description: String!, semester: Int, yearNumber: Int, status: CatalogStatus!, createdAt: String!, updatedAt: String! }
+type Topic { id: ID!, courseId: ID, parentTopicId: ID, title: String!, slug: String!, description: String!, orderIndex: Int!, difficulty: TopicDifficulty!, status: CatalogStatus!, createdAt: String!, updatedAt: String! }
+type TopicTreeNode { topic: Topic!, children: [TopicTreeNode!]! }
+type TopicPrerequisite { topicId: ID!, prerequisiteTopicId: ID!, createdAt: String! }
+type CatalogValidationResult { valid: Boolean! }
+
+input CatalogFilter { search: String = "", status: CatalogStatus }
+input PaginationInput { limit: Int = 50, offset: Int = 0 }
+input CreateUniversityInput { name: String!, shortName: String = "", city: String = "", country: String = "", websiteUrl: String = "", logoFileId: ID, status: CatalogStatus = draft }
+input UpdateUniversityInput { name: String!, shortName: String = "", city: String = "", country: String = "", websiteUrl: String = "", logoFileId: ID }
+input CreateProgramInput { universityId: ID, name: String!, shortName: String = "", faculty: String = "", degreeLevel: DegreeLevel = other, startYear: Int, status: CatalogStatus = draft }
+input UpdateProgramInput { universityId: ID, clearUniversity: Boolean = false, name: String!, shortName: String = "", faculty: String = "", degreeLevel: DegreeLevel = other, startYear: Int }
+input CreateCourseInput { programId: ID, name: String!, slug: String = "", description: String = "", semester: Int, yearNumber: Int, status: CatalogStatus = draft }
+input UpdateCourseInput { programId: ID, clearProgram: Boolean = false, name: String!, slug: String = "", description: String = "", semester: Int, yearNumber: Int }
+input CreateTopicInput { courseId: ID, parentTopicId: ID, title: String!, slug: String = "", description: String = "", orderIndex: Int = 0, difficulty: TopicDifficulty = basic, status: CatalogStatus = draft }
+input UpdateTopicInput { courseId: ID, clearCourse: Boolean = false, parentTopicId: ID, clearParentTopic: Boolean = false, title: String!, slug: String = "", description: String = "", orderIndex: Int = 0, difficulty: TopicDifficulty = basic }
+input TopicPrerequisiteInput { topicId: ID!, prerequisiteTopicId: ID! }
+input CatalogBindingInput { universityId: ID, programId: ID, courseId: ID, topicId: ID }
+
+enum ITTaskStatus { draft published archived }
+enum ITTaskType { single_choice multiple_choice programming }
+enum ITTaskDifficulty { easy medium hard }
+enum ITSubmissionVerdict { accepted wrong_answer }
+enum ITProgrammingLanguage { python go }
+enum ITCodeRunMode { samples graded }
+enum ITCodeSubmissionStatus { queued completed }
+enum ITExecutionVerdict { accepted wrong_answer compilation_error runtime_error time_limit_exceeded memory_limit_exceeded output_limit_exceeded checker_error infrastructure_error cancelled }
+
+type ITTaskOption { id: ID!, text: String!, position: Int!, isCorrect: Boolean }
+type ITTaskExample { input: String!, output: String!, explanation: String! }
+type ITTaskSource { sourceId: String!, sourceName: String!, sourceUrl: String!, publishedAt: String }
+type ITTask { id: ID!, status: ITTaskStatus!, taskVersionId: ID!, versionNumber: Int!, topicId: ID, title: String!, statement: String!, taskType: ITTaskType!, difficulty: ITTaskDifficulty!, options: [ITTaskOption!]!, tags: [String!]!, examples: [ITTaskExample!]!, constraints: [String!]!, source: ITTaskSource, createdAt: String!, updatedAt: String! }
+type ITTaskSummary { id: ID!, status: ITTaskStatus!, taskVersionId: ID!, versionNumber: Int!, topicId: ID, title: String!, taskType: ITTaskType!, difficulty: ITTaskDifficulty!, createdAt: String!, updatedAt: String! }
+type ITTaskList { items: [ITTaskSummary!]!, limit: Int!, offset: Int! }
+type ITSubmission { taskTitle: String!, id: ID!, userId: ID!, taskId: ID!, taskVersionId: ID!, taskVersionNumber: Int!, selectedOptionIds: [ID!]!, correctOptionIds: [ID!]!, correct: Boolean!, verdict: ITSubmissionVerdict!, taskUpdated: Boolean!, latestTaskVersionId: ID!, latestVersionNumber: Int!, createdAt: String! }
+type ITSubmissionList { items: [ITSubmission!]!, limit: Int!, offset: Int! }
+
+type ITExecutionPhaseResult {
+  exitCode: Int
+  stdout: String!
+  stderr: String!
+  durationMs: Int!
+  memoryBytes: Int!
+}
+
+type ITExecutionTestResult {
+  testId: ID!
+  verdict: ITExecutionVerdict!
+  stdout: String!
+  stderr: String!
+  durationMs: Int!
+  memoryBytes: Int!
+}
+
+type ITExecutionFailure {
+  code: String!
+  message: String!
+}
+
+type ITCodeSubmission {
+  runMode: ITCodeRunMode!
+  id: ID!
+  userId: ID!
+  taskId: ID!
+  taskVersionId: ID!
+  taskVersionNumber: Int!
+  executionId: ID!
+  correlationId: ID!
+  language: ITProgrammingLanguage!
+  sourceFileName: String!
+  status: ITCodeSubmissionStatus!
+  verdict: ITExecutionVerdict
+  compilation: ITExecutionPhaseResult
+  execution: ITExecutionPhaseResult
+  tests: [ITExecutionTestResult!]!
+  failure: ITExecutionFailure
+  createdAt: String!
+  updatedAt: String!
+  completedAt: String
+}
+
+type ITCodeSubmissionList {
+  items: [ITCodeSubmission!]!
+  limit: Int!
+  offset: Int!
+}
+
+input ITTaskFilter { search: String, taskType: ITTaskType, difficulty: ITTaskDifficulty, topicId: ID }
+input ITAdminTaskFilter { status: ITTaskStatus, taskType: ITTaskType, difficulty: ITTaskDifficulty, topicId: ID }
+input ITTaskOptionInput { text: String!, isCorrect: Boolean! }
+input ITTaskExampleInput { input: String!, output: String!, explanation: String = "" }
+input ITTaskInput { topicId: ID, title: String!, statement: String!, taskType: ITTaskType!, difficulty: ITTaskDifficulty = easy, options: [ITTaskOptionInput!]!, tags: [String!] = [], examples: [ITTaskExampleInput!] = [], constraints: [String!] = [] }
+input ITSubmissionInput { taskVersionId: ID!, idempotencyKey: ID!, selectedOptionIds: [ID!]! }
+
+input ITCodeSubmissionInput {
+  runMode: ITCodeRunMode! = samples
+  taskVersionId: ID!
+  idempotencyKey: ID!
+  language: ITProgrammingLanguage!
+  file: Upload
+  sourceCode: String
+}
+
+enum TaskCandidateStatus { pending approved rejected }
+type TaskCandidate { id: ID!, status: TaskCandidateStatus!, revision: Int!, externalId: String!, sourceId: String!, sourceName: String!, sourceUrl: String!, sourcePublishedAt: String, retrievedAt: String!, collectionJobId: ID!, topicId: ID, problemListId: ID, title: String!, statement: String!, difficulty: ITTaskDifficulty!, tags: [String!]!, examples: [ITTaskExample!]!, constraints: [String!]!, approvedTaskId: ID, rejectionReason: String!, createdAt: String!, updatedAt: String! }
+type TaskCandidateList { items: [TaskCandidate!]!, limit: Int!, offset: Int! }
+input TaskCandidateFilter { status: TaskCandidateStatus, sourceId: String, difficulty: ITTaskDifficulty, problemListId: ID }
+input TaskCandidateReviewInput { expectedRevision: Int!, topicId: ID, title: String!, statement: String!, difficulty: ITTaskDifficulty!, tags: [String!]!, examples: [ITTaskExampleInput!]!, constraints: [String!]! }
+
+# Problem list — именованный набор задач, собранных из внешнего /problem-list/.
+type ProblemListMember { taskId: ID!, title: String!, difficulty: ITTaskDifficulty!, status: ITTaskStatus! }
+type ProblemList { id: ID!, name: String!, sourceId: String!, sourceUrl: String!, memberCount: Int!, pendingCandidates: Int!, createdAt: String!, updatedAt: String!, members: [ProblemListMember!]! }
+type ProblemListPage { items: [ProblemList!]!, limit: Int!, offset: Int! }
+
+enum TaskCollectionJobStatus { queued running succeeded partial failed }
+enum TaskCollectionSourceStatus { queued running succeeded failed truncated }
+type TaskCollectionSource { id: ID!, kind: String!, sourceId: String!, url: String!, status: TaskCollectionSourceStatus!, collectedTotal: Int!, importedTotal: Int!, duplicatesTotal: Int!, invalidTotal: Int!, errorMessage: String! }
+type TaskCollectionJob { id: ID!, trigger: String!, requestedBy: ID, idempotencyKey: ID!, publishedFrom: String, publishedTo: String, maxItemsPerSource: Int!, status: TaskCollectionJobStatus!, collectedTotal: Int!, importedTotal: Int!, duplicatesTotal: Int!, invalidTotal: Int!, errorCount: Int!, errorMessage: String!, notificationAcknowledged: Boolean!, startedAt: String, finishedAt: String, createdAt: String!, updatedAt: String!, sources: [TaskCollectionSource!]! }
+type TaskCollectionJobList { items: [TaskCollectionJob!]!, limit: Int!, offset: Int! }
+type TaskCollectionSources { telegramChannels: [String!]!, websiteSources: [String!]! }
+input StartTaskCollectionInput { idempotencyKey: ID!, telegramChannels: [String!] = [], publishedFrom: String, publishedTo: String, websiteUrls: [String!] = [], maxItemsPerSource: Int = 100 }
+
+type AuthPayload {
+  user: User!
+  token: String!
+  expiresAt: String!
+}
+
+input RegisterInput {
+  email: String!
+  password: String!
+  username: String!
+  firstName: String = ""
+  lastName: String = ""
+  birthDate: String
+  phone: String = ""
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+input UpdateUserInput {
+  username: String
+  firstName: String
+  lastName: String
+  birthDate: String
+  clearBirthDate: Boolean = false
+  phone: String
+}
+
+# Feed — лента активностей (новости каталога и задач).
+enum FeedKind {
+  university_created
+  university_activated
+  program_created
+  program_activated
+  course_created
+  course_activated
+  topic_created
+  topic_activated
+  task_published
+}
+
+type FeedItem {
+  id: ID!
+  kind: FeedKind!
+  title: String!
+  text: String!
+  href: String!
+  actorUserId: ID!
+  occurredAt: String!
+}
+
+type FeedConnection {
+  items: [FeedItem!]!
+  limit: Int!
+  offset: Int!
+}
+
+
+type SearchResults {
+  universities: [University!]!
+  programs: [Program!]!
+  courses: [Course!]!
+  topics: [Topic!]!
+  tasks: [ITTaskSummary!]!
+}
+
+type Query {
+  myLearningPlans: [SavedLearningPlan!]!
+  savedLearningPlan(id: ID!): SavedLearningPlan!
+  learningPlan(goal: String!, minutes: Int!, sessionCount: Int!): LearningPlan!
+  externalTaskSearch(query: String!): [ExternalTaskResult!]!
+  practicePlan(topicIds: [ID!]!, minutes: Int!, sessionCount: Int, goal: String): PracticePlan!
+  myPracticeGoal: PracticeGoal
+  myPracticeProgress: PracticeProgress!
+  practiceProgress(userId: ID!): PracticeProgress
+  practiceLeaderboard(courseId: ID): [PracticeLeaderboardEntry!]!
+  search(query: String!, limit: Int! = 5): SearchResults!
+  me: User!
+  getUser(id: ID!): User!
+  userByUsername(username: String!): User!
+  users(search: String = "", limit: Int = 20, offset: Int = 0): [User!]!
+  userProfile(id: ID!): PublicUser!
+  searchUsers(search: String!, pagination: PaginationInput): PublicUserConnection!
+  universities(filter: CatalogFilter, pagination: PaginationInput): [University!]!
+  university(id: ID!): University!
+  programs(universityId: ID, filter: CatalogFilter, pagination: PaginationInput): [Program!]!
+  program(id: ID!): Program!
+  courses(programId: ID, filter: CatalogFilter, pagination: PaginationInput): [Course!]!
+  course(id: ID!): Course!
+  topics(courseId: ID, filter: CatalogFilter, pagination: PaginationInput): [Topic!]!
+  topic(id: ID!): Topic!
+  topicTree(courseId: ID): [TopicTreeNode!]!
+  topicPrerequisites(topicId: ID!): [TopicPrerequisite!]!
+  validateCatalogBinding(input: CatalogBindingInput!): CatalogValidationResult!
+  itTasks(filter: ITTaskFilter, pagination: PaginationInput): ITTaskList!
+  itTask(id: ID!): ITTask!
+  adminITTasks(filter: ITAdminTaskFilter, pagination: PaginationInput): ITTaskList!
+  adminITTask(id: ID!): ITTask!
+  itSubmission(id: ID!): ITSubmission!
+  myITSubmissions(taskId: ID, pagination: PaginationInput): ITSubmissionList!
+  itCodeSubmission(id: ID!): ITCodeSubmission!
+  myITCodeSubmissions(taskId: ID, pagination: PaginationInput): ITCodeSubmissionList!
+  taskCollectionSources: TaskCollectionSources!
+  taskCollectionJobs(unreadOnly: Boolean = false, pagination: PaginationInput): TaskCollectionJobList!
+  taskCollectionJob(id: ID!): TaskCollectionJob!
+  taskCandidates(filter: TaskCandidateFilter, pagination: PaginationInput): TaskCandidateList!
+  taskCandidate(id: ID!): TaskCandidate!
+  problemLists(pagination: PaginationInput): ProblemListPage!
+  problemList(id: ID!): ProblemList!
+  mediaFile(id: ID!): MediaFile!
+  myMediaFiles(filter: MediaFileFilter, pagination: PaginationInput): MediaFileConnection!
+  mediaDownloadUrl(fileId: ID!, variant: String = "original"): MediaDownload!
+  feed(pagination: PaginationInput): FeedConnection!
+}
+
+type Mutation {
+  saveLearningPlan(goal: String!, minutes: Int!, sessionCount: Int!, requestId: ID!): SavedLearningPlan!
+  removeLearningPlanTask(id: ID!, revision: Int!, taskId: ID!): SavedLearningPlan!
+  updateLearningMaterial(id: ID!, revision: Int!, materialId: ID!, status: MaterialProgress!): SavedLearningPlan!
+  setLearningPlanPublic(id: ID!, revision: Int!, public: Boolean!): SavedLearningPlan!
+  refreshLearningPlan(id: ID!, revision: Int!): SavedLearningPlan!
+  cloneLearningPlan(id: ID!, requestId: ID!): SavedLearningPlan!
+
+  savePracticeGoal(topicIds: [ID!]!, minutes: Int!, sessionCount: Int): PracticeGoal!
+  deletePracticeGoal: Boolean!
+  setMyPracticeStatsPublic(public: Boolean!): Boolean!
+  register(input: RegisterInput!): AuthPayload!
+  login(input: LoginInput!): AuthPayload!
+  logout: Boolean!
+  updateUser(id: ID!, input: UpdateUserInput!): User!
+  setMyAvatar(fileId: ID): User!
+  deleteUser(id: ID!): Boolean!
+  setUserAdmin(id: ID!, admin: Boolean!): User!
+  setUserAdminByUsername(username: String!, admin: Boolean!): User!
+  createUniversity(input: CreateUniversityInput!): University!
+  updateUniversity(id: ID!, input: UpdateUniversityInput!): University!
+  deleteUniversity(id: ID!): Boolean!
+  changeUniversityStatus(id: ID!, status: CatalogStatus!): University!
+  createProgram(input: CreateProgramInput!): Program!
+  updateProgram(id: ID!, input: UpdateProgramInput!): Program!
+  deleteProgram(id: ID!): Boolean!
+  changeProgramStatus(id: ID!, status: CatalogStatus!): Program!
+  createCourse(input: CreateCourseInput!): Course!
+  updateCourse(id: ID!, input: UpdateCourseInput!): Course!
+  deleteCourse(id: ID!): Boolean!
+  changeCourseStatus(id: ID!, status: CatalogStatus!): Course!
+  createTopic(input: CreateTopicInput!): Topic!
+  updateTopic(id: ID!, input: UpdateTopicInput!): Topic!
+  deleteTopic(id: ID!): Boolean!
+  changeTopicStatus(id: ID!, status: CatalogStatus!): Topic!
+  addTopicPrerequisite(input: TopicPrerequisiteInput!): TopicPrerequisite!
+  removeTopicPrerequisite(input: TopicPrerequisiteInput!): Boolean!
+  createITTask(input: ITTaskInput!): ITTask!
+  updateITTask(id: ID!, input: ITTaskInput!): ITTask!
+  changeITTaskStatus(id: ID!, status: ITTaskStatus!): ITTask!
+  deleteITTask(id: ID!): Boolean!
+  submitITTaskAnswer(taskId: ID!, input: ITSubmissionInput!): ITSubmission!
+  submitITTaskCode(taskId: ID!, input: ITCodeSubmissionInput!): ITCodeSubmission!
+  startTaskCollection(input: StartTaskCollectionInput!): TaskCollectionJob!
+  acknowledgeTaskCollectionJob(id: ID!): Boolean!
+  updateTaskCandidate(id: ID!, input: TaskCandidateReviewInput!): TaskCandidate!
+  approveTaskCandidate(id: ID!, input: TaskCandidateReviewInput!): ITTask!
+  rejectTaskCandidate(id: ID!, expectedRevision: Int!, reason: String = ""): TaskCandidate!
+  createMediaUpload(input: CreateMediaUploadInput!): MediaUpload!
+  createMediaUploadParts(fileId: ID!, partNumbers: [Int!]!): [MediaUploadPart!]!
+  completeMediaUpload(input: CompleteMediaUploadInput!): MediaFile!
+  deleteMediaFile(id: ID!): Boolean!
+}
+
+# Предварительная подборка практики по выбранным темам и бюджету времени.
+type PracticePlan {
+  aiStatus: String!
+  policyVersion: String!
+  totalMinutes: Int!
+  warnings: [String!]!
+  items: [PracticePlanItem!]!
+  requestedSessions: Int!
+  totalPlannedMinutes: Int!
+  sessions: [PracticeSession!]!
+  topicInsights: [PracticeTopicInsight!]!
+}
+
+type PracticeSession {
+  number: Int!
+  totalMinutes: Int!
+  items: [PracticePlanItem!]!
+}
+
+type PracticeTopicRef {
+  id: ID!
+  title: String!
+}
+
+# Наблюдения по текущим версиям задач; не оценка освоения темы.
+type PracticeTopicInsight {
+  topicId: ID!
+  title: String!
+  isTarget: Boolean!
+  acceptedTasks: Int!
+  failedTasks: Int!
+  eligibleTasks: Int!
+  plannedTasks: Int!
+  remainingToReadiness: Int!
+  recommendedDifficulty: String!
+  minimumMinutes: Int!
+  blockedBy: [PracticeTopicRef!]!
+  nextAction: String!
+}
+
+type PracticePlanItem {
+  taskId: ID!
+  taskVersionId: ID!
+  topicId: ID!
+  title: String!
+  difficulty: String!
+  taskType: String!
+  estimatedMinutes: Int!
+  reasonCode: String!
+}
+
+type PracticeGoal {
+  topics: [PracticeGoalTopic!]!
+  minutes: Int!
+  sessionCount: Int!
+  revision: Int!
+}
+
+type PracticeGoalTopic {
+  id: ID!
+  title: String!
+  status: String!
+}
+
+# Измеренная практика, а не оценка освоения темы.
+type PracticeProgress {
+  userId: ID!
+  public: Boolean!
+  attempts: Int!
+  acceptedAttempts: Int!
+  solvedTasks: Int!
+  score: Int!
+  accuracyPercent: Int!
+  daily: [PracticeProgressDay!]!
+  byDifficulty: [PracticeProgressDifficulty!]!
+}
+
+type PracticeProgressDay { date: String!, attempts: Int!, accepted: Int! }
+type PracticeProgressDifficulty { difficulty: String!, solved: Int! }
+
+type PracticeLeaderboardEntry {
+  rank: Int!
+  userId: ID!
+  username: String!
+  displayName: String!
+  score: Int!
+  solvedTasks: Int!
+}
+
+
+type LearningMaterial { id: ID!, title: String!, url: String!, action: String!, minutes: Int! }
+type LearningPlan {
+  aiStatus: String!
+  topics: [PracticeTopicRef!]!
+  materials: [LearningMaterial!]!
+  practice: PracticePlan
+  warnings: [String!]!
+}
+type ExternalTaskResult { title: String!, url: String!, rating: Int!, tags: [String!]! }
+
+enum MaterialProgress { TODO IN_PROGRESS DONE }
+type SavedLearningMaterial { id: ID!, title: String!, url: String!, action: String!, minutes: Int!, status: MaterialProgress! }
+type SavedLearningTask { id: ID!, versionId: ID!, title: String!, minutes: Int!, completed: Boolean!, completionVersionId: ID }
+type SavedLearningPlan {
+ id: ID!
+ goal: String!
+ isOwner: Boolean!
+ public: Boolean!
+ revision: Int!
+ minutes: Int!
+ sessionCount: Int!
+ materials: [SavedLearningMaterial!]!
+ tasks: [SavedLearningTask!]!
+ progressAvailable: Boolean!
+}

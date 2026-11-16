@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
-    "codegen": "graphql-codegen --config codegen.yml",
+    "schema:check": "node scripts/check-schema.mjs",
+    "codegen": "npm run schema:check && graphql-codegen --config codegen.yml",
     "codegen:check": "npm run codegen && git diff --exit-code -- src/api/generated.ts"
   },
   "dependencies": {

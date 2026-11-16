@@ -9,7 +9,7 @@
 #
 # После успешного прогона: закоммитить src/api/generated.ts и раскомментировать
 # job `codegen` в .github/workflows/ci.yml (проверка дрейфа схемы в CI).
-schema: ../api-gateway/api/graphql/schema.graphqls
+schema: schema/schema.graphqls
 documents:
   - 'src/**/*.{ts,tsx}'
 generates:
