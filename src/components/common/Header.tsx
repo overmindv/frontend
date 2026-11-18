@@ -9,6 +9,7 @@ import { SEARCH_QUERY, SEARCH_KINDS, kindDescription, kindHref, kindTitle, total
 const primaryLinks = [
   ["/", "Главная"],
   ["/tasks", "Задачи"],
+  ["/materials", "Материалы"],
   ["/practice", "Практика"],
 ] as const;
 

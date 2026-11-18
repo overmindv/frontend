@@ -1,0 +1,254 @@
+.materials-page {
+  max-width: 960px;
+}
+
+.material-page-heading h1 {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.material-filters {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.material-filters label {
+  color: var(--text-secondary);
+  display: grid;
+  flex: 0 1 340px;
+  font-size: 13px;
+  gap: 6px;
+  min-width: 0;
+}
+
+.material-filters select {
+  background: var(--input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  color: var(--text);
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px 10px;
+  width: 100%;
+}
+
+.material-list,
+.material-file-list,
+.material-task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.material-list__item {
+  align-items: center;
+  border-block-start: 1px solid var(--border);
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  min-height: 63px;
+  overflow-wrap: anywhere;
+  padding: 12px 4px;
+}
+
+.material-list__item:hover,
+.material-task-list a:hover {
+  color: var(--accent);
+}
+
+.material-meta,
+.material-pagination,
+.material-topics {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.material-meta {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.material-meta span,
+.material-back {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.material-pagination {
+  margin-top: 14px;
+}
+
+.material-reader-heading {
+  border-bottom: 1px solid var(--border);
+  margin: 14px 0 24px;
+  padding-bottom: 18px;
+}
+
+.material-reader-heading h1,
+.material-reader-heading p {
+  overflow-wrap: anywhere;
+}
+
+.material-topics {
+  margin-top: 10px;
+}
+
+.material-topics a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.material-reader-layout {
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.material-reader-layout.with-aside {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 275px);
+}
+
+.material-article {
+  max-width: 74ch;
+  min-width: 0;
+}
+
+.material-aside h2 {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.material-aside-section {
+  border-top: 1px solid var(--border);
+  margin-bottom: 18px;
+  overflow-wrap: anywhere;
+  padding-top: 12px;
+}
+
+.material-file {
+  align-items: start;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  gap: 7px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 8px 0;
+}
+
+.material-file > svg {
+  margin-top: 3px;
+}
+
+.material-file small,
+.material-history time {
+  color: var(--text-muted);
+  display: block;
+  font-size: 12px;
+}
+
+.material-task-list a {
+  align-items: center;
+  display: flex;
+  gap: 7px;
+  justify-content: space-between;
+  min-height: 36px;
+}
+
+.material-task-list svg,
+.material-list__item > svg {
+  flex-shrink: 0;
+}
+
+.material-history summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.material-history summary > svg {
+  margin-inline: 3px;
+  vertical-align: text-bottom;
+}
+
+.material-history ol {
+  margin-top: 10px;
+  padding-inline-start: 20px;
+}
+
+.material-history li {
+  margin-bottom: 8px;
+}
+
+.material-markdown {
+  overflow-wrap: anywhere;
+}
+
+.material-markdown h1,
+.material-markdown h2,
+.material-markdown h3 {
+  line-height: 1.28;
+  margin: 1.3em 0 0.55em;
+}
+
+.material-markdown > :first-child {
+  margin-top: 0;
+}
+
+.material-markdown a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.material-markdown pre,
+.material-markdown table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.material-markdown pre {
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  margin: 0 0 18px;
+  padding: 12px 14px;
+}
+
+.material-markdown code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+}
+
+.material-markdown blockquote {
+  border-inline-start: 3px solid var(--border-strong);
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  padding-inline-start: 12px;
+}
+
+.material-markdown table {
+  border-collapse: collapse;
+  display: block;
+  margin-bottom: 18px;
+}
+
+.material-markdown th,
+.material-markdown td {
+  border: 1px solid var(--border);
+  overflow-wrap: normal;
+  padding: 5px 10px;
+  text-align: start;
+}
+
+@media (max-width: 1000px) {
+  .material-reader-layout.with-aside {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
