@@ -8,6 +8,25 @@
   gap: 12px;
 }
 
+.material-view-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+
+.material-view-tabs a {
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  padding: 8px 2px;
+}
+
+.material-view-tabs a[aria-current] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 .material-filters {
   align-items: end;
   display: flex;

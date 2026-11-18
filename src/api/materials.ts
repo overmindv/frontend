@@ -77,10 +77,11 @@ export type MaterialHistoryResult = {
 
 export type MaterialDownloadResult = { mediaDownloadUrl: { url: string; expiresAt: string } };
 
-export function materialsHref(topic?: string | null, cursor?: string | null) {
+export function materialsHref(topic?: string | null, cursor?: string | null, drafts = false) {
   const params = new URLSearchParams();
   if (topic) params.set("topic", topic);
   if (cursor) params.set("cursor", cursor);
+  if (drafts) params.set("view", "drafts");
   const search = params.toString();
   return search ? `/materials?${search}` : "/materials";
 }

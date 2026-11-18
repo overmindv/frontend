@@ -20,21 +20,31 @@ async function sha256Hex(data: ArrayBuffer): Promise<string> {
     .join("");
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const abort = () => {
+      clearTimeout(timer);
+      reject(signal?.reason);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", abort);
+      resolve();
+    }, ms);
+    if (signal?.aborted) abort();
+    else signal?.addEventListener("abort", abort, { once: true });
+  });
 }
 
-// Ожидает, пока файл пройдёт асинхронную обработку в Media (сканирование, WebP-варианты)
-// и станет ready — иначе setMyAvatar получает 409 "файл не готов".
-// Обработка занимает время, поэтому "quarantined"/"processing" — это нормальные промежуточные
-// статусы, их опрашиваем дальше; терминальные отказы только rejected/deleted.
-async function pollUntilReady(fileId: string, timeoutMs = 60_000): Promise<void> {
+// Media проверяет файлы асинхронно. Привязка доступна только после ready.
+async function pollUntilReady(fileId: string, signal?: AbortSignal, timeoutMs = 60_000): Promise<void> {
   const started = Date.now();
   for (;;) {
+    signal?.throwIfAborted();
     const { data } = await apolloClient.query<{ mediaFile: MediaFile }>({
       query: MEDIA_FILE_QUERY,
       variables: { id: fileId },
-      fetchPolicy: "network-only",
+      fetchPolicy: "no-cache",
+      context: { fetchOptions: { signal }, queryDeduplication: false },
     });
     const status = data.mediaFile?.status;
     if (status === "ready") return;
@@ -44,19 +54,21 @@ async function pollUntilReady(fileId: string, timeoutMs = 60_000): Promise<void>
     if (Date.now() - started > timeoutMs) {
       throw new Error("Файл слишком долго обрабатывается, попробуйте ещё раз.");
     }
-    await delay(1_000);
+    await delay(1_000, signal);
   }
 }
 
 // Передаёт байты напрямую в object storage по presigned POST-форме, минуя gateway.
-async function postToObjectStorage(upload: MediaUpload, file: File): Promise<void> {
+async function postToObjectStorage(upload: MediaUpload, url: string, file: File, signal?: AbortSignal): Promise<void> {
   const form = new FormData();
   for (const field of upload.fields) {
     form.append(field.name, field.value);
   }
   form.append("file", file);
 
-  const response = await fetch(upload.url, { method: "POST", body: form });
+  const response = await fetch(url, {
+    method: "POST", body: form, signal, credentials: "omit", redirect: "error", referrerPolicy: "no-referrer",
+  });
   if (!response.ok) {
     throw new Error(`Не удалось загрузить файл (HTTP ${response.status}).`);
   }
@@ -67,45 +79,64 @@ export interface UploadAvatarResult {
   user: User;
 }
 
-// Загружает аватар и назначает его текущему пользователю.
-export async function uploadAvatar(file: File): Promise<UploadAvatarResult> {
+type UploadOptions = Pick<CreateMediaUploadInput, "purpose" | "visibility"> & {
+  signal?: AbortSignal;
+  resolveURL?: (value: string) => string | undefined;
+};
+
+export async function uploadSingleMedia(file: File, options: UploadOptions): Promise<string> {
+  const { purpose, visibility, signal, resolveURL } = options;
+  signal?.throwIfAborted();
   const buffer = await file.arrayBuffer();
   const checksumSha256 = await sha256Hex(buffer);
+  signal?.throwIfAborted();
 
   const createInput: CreateMediaUploadInput = {
     originalName: file.name,
     contentType: file.type || "application/octet-stream",
     sizeBytes: file.size,
     checksumSha256,
-    purpose: "avatar",
-    visibility: "public",
+    purpose,
+    visibility,
   };
   const createResult = await apolloClient.mutate<{ createMediaUpload: MediaUpload }>({
     mutation: CREATE_MEDIA_UPLOAD_MUTATION,
     variables: { input: createInput },
+    fetchPolicy: "no-cache",
+    context: { fetchOptions: { signal } },
   });
   const upload = createResult.data?.createMediaUpload;
   if (!upload) throw new Error("Не удалось создать сессию загрузки.");
-
-  await postToObjectStorage(upload, file);
+  const url = resolveURL ? resolveURL(upload.url) : upload.url;
+  if (upload.mode !== "single" || !url || !upload.fileId || !upload.fields.length) {
+    throw new Error("Сессия загрузки недоступна.");
+  }
+  await postToObjectStorage(upload, url, file, signal);
 
   const completeInput: CompleteMediaUploadInput = { fileId: upload.fileId, parts: [] };
   const completeResult = await apolloClient.mutate<{ completeMediaUpload: MediaFile }>({
     mutation: COMPLETE_MEDIA_UPLOAD_MUTATION,
     variables: { input: completeInput },
+    fetchPolicy: "no-cache",
+    context: { fetchOptions: { signal } },
   });
   if (!completeResult.data?.completeMediaUpload) {
     throw new Error("Не удалось завершить загрузку.");
   }
 
-  await pollUntilReady(upload.fileId);
+  await pollUntilReady(upload.fileId, signal);
+  return upload.fileId;
+}
 
+// Загружает аватар и назначает его текущему пользователю.
+export async function uploadAvatar(file: File): Promise<UploadAvatarResult> {
+  const fileId = await uploadSingleMedia(file, { purpose: "avatar", visibility: "public" });
   const avatarResult = await apolloClient.mutate<{ setMyAvatar: User }>({
     mutation: SET_MY_AVATAR_MUTATION,
-    variables: { fileId: upload.fileId },
+    variables: { fileId },
   });
   const user = avatarResult.data?.setMyAvatar;
   if (!user) throw new Error("Не удалось сохранить аватар.");
 
-  return { fileId: upload.fileId, user };
+  return { fileId, user };
 }

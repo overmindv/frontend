@@ -1,0 +1,199 @@
+.material-editor {
+  max-width: 1080px;
+}
+
+.draft-page-heading {
+  align-items: center;
+  margin: 14px 0 22px;
+}
+
+.editor-fields {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.editor-label {
+  display: grid;
+  font-weight: 600;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.editor-fields input:not([type="file"]),
+.editor-fields textarea {
+  background: var(--input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  color: var(--text);
+  min-width: 0;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+.editor-layout {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(245px, 300px);
+}
+
+.editor-sidebar {
+  border-inline-start: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  padding-inline-start: 20px;
+}
+
+.editor-mode,
+.editor-section-heading,
+.editor-topic-search,
+.draft-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.editor-mode {
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.editor-mode button[aria-pressed="true"] {
+  background: var(--input);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.editor-fields textarea,
+.editor-preview {
+  display: block;
+  min-height: 360px;
+}
+
+.editor-fields textarea {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.editor-preview {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow-wrap: anywhere;
+  padding: 12px;
+}
+
+.editor-section-heading {
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.editor-section-heading h2,
+.editor-leave h2 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.editor-section-heading span,
+.draft-actions > span,
+.editor-topic-picker p {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.editor-topic-tags,
+.editor-topic-results,
+.editor-file-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+.editor-topic-tags li,
+.editor-file-list li {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  min-height: 38px;
+}
+
+.editor-topic-tags li span,
+.editor-file-list li span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.editor-icon {
+  flex: 0 0 34px;
+  min-height: 34px;
+  padding: 0;
+  width: 34px;
+}
+
+.editor-topic-picker {
+  margin-top: 8px;
+}
+
+.editor-topic-results {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.editor-topic-results button {
+  display: block;
+  overflow-wrap: anywhere;
+  text-align: start;
+  width: 100%;
+}
+
+.draft-actions {
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 18px;
+  padding-top: 12px;
+}
+
+.editor-leave {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text);
+  max-width: calc(100% - 32px);
+  padding: 20px;
+  width: 340px;
+}
+
+.editor-leave::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.editor-leave > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+@media (max-width: 700px) {
+  .draft-page-heading {
+    align-items: flex-start;
+  }
+
+  .editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .editor-sidebar {
+    border-inline-start: 0;
+    border-top: 1px solid var(--border);
+    padding-inline-start: 0;
+    padding-top: 14px;
+  }
+}
