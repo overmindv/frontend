@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@apollo/client";
 import { ArrowLeft, GitCommitHorizontal, GitPullRequestClosed } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   CHANGE_AUTHOR_QUERY, CLOSE_MATERIAL_CHANGE_MUTATION, MATERIAL_CHANGE_QUERY, type MaterialChange,
@@ -15,6 +15,7 @@ import "../materials.css";
 import "./changes.css";
 
 const statusLabels = { open: "Открыто", closed: "Закрыто", merged: "Принято" };
+const ChangeReview = lazy(() => import("../review/ChangeReview"));
 
 export default function MaterialChangePage() {
   const { changeId = "" } = useParams();
@@ -33,13 +34,14 @@ export default function MaterialChangePage() {
         <p role="alert">Не удалось открыть предложение.</p>
         <button type="button" className="button button--ghost" onClick={() => void query.refetch().catch(() => undefined)}>Повторить</button>
       </div> : change && change.id === changeId && isMaterialID(change.head.id) ?
-        <ChangeView change={change} key={change.id} /> : <div className="content-state"><h1>Предложение недоступно</h1></div>}
+        <ChangeView change={change} key={change.id} refresh={() => query.refetch()} /> :
+        <div className="content-state"><h1>Предложение недоступно</h1></div>}
   </main>;
 }
 
-function ChangeView({ change }: { change: MaterialChange }) {
+function ChangeView({ change, refresh }: { change: MaterialChange; refresh: () => Promise<unknown> }) {
   const { userId } = useAuth();
-  const [tab, setTab] = useState<"diff" | "history">("diff");
+  const [tab, setTab] = useState<"diff" | "history" | "review">("diff");
   const [selected, setSelected] = useState<{ id: string; ordinal: number }>();
   const [closed, setClosed] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -95,10 +97,14 @@ function ChangeView({ change }: { change: MaterialChange }) {
       <button type="button" className="button button--ghost" disabled={loading} onClick={() => { setConfirm(false); setProblem(""); }}>Отмена</button>
       {problem && <p role="alert">{problem}</p>}
     </div>}
-    {change.baseOutdated && status === "open" && <p role="status">После создания предложения опубликована более новая версия материала.</p>}
+    {change.baseOutdated && status === "open" && <div className="change-actions">
+      <p role="status">После создания предложения опубликована более новая версия материала.</p>
+      {ownOpen && tab !== "review" && <Link className="button button--ghost" to={`${changeHref(change.id)}/rebase`}>Обновить основу</Link>}
+    </div>}
     <div className="change-tabs" role="group" aria-label="Раздел предложения">
       <button type="button" className="button button--ghost" aria-pressed={tab === "diff"} onClick={() => setTab("diff")}>Изменения</button>
       <button type="button" className="button button--ghost" aria-pressed={tab === "history"} onClick={() => setTab("history")}>История версий</button>
+      <button type="button" className="button button--ghost" aria-pressed={tab === "review"} onClick={() => setTab("review")}>Ревью</button>
     </div>
     {tab === "diff" ? <>
       <div className="change-comparison">
@@ -107,6 +113,10 @@ function ChangeView({ change }: { change: MaterialChange }) {
           <button type="button" className="button button--ghost" onClick={() => setSelected(undefined)}>Текущая версия</button>}
       </div>
       <ChangeDiff key={revision.id} id={change.id} revisionId={revision.id} />
-    </> : <ChangeHistory id={change.id} select={(id, ordinal) => { setSelected({ id, ordinal }); setTab("diff"); }} />}
+    </> : tab === "history" ? <ChangeHistory id={change.id} select={(id, ordinal) => { setSelected({ id, ordinal }); setTab("diff"); }} /> :
+      <Suspense fallback={<Spinner label="Загружаем ревью" />}>
+        <ChangeReview key={revision.id} change={change} proposalStatus={status} revision={revision} refresh={refresh}
+          selectCurrent={selected && selected.id !== change.head.id ? () => setSelected(undefined) : undefined} />
+      </Suspense>}
   </>;
 }

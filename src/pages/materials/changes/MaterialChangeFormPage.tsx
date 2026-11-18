@@ -11,7 +11,7 @@ import "../materials.css";
 import "./changes.css";
 import "../editor/editor.css";
 
-export default function MaterialChangeFormPage() {
+export default function MaterialChangeFormPage({ rebase = false }: { rebase?: boolean }) {
   const { id = "", changeId } = useParams();
   const { userId } = useAuth();
   const publication = useQuery<{ publishedMaterial: PublishedMaterial | null }>(PUBLISHED_MATERIAL_QUERY, {
@@ -20,15 +20,23 @@ export default function MaterialChangeFormPage() {
   const proposal = useQuery<{ materialChangeProposal: MaterialChange | null }>(MATERIAL_CHANGE_QUERY, {
     variables: { id: changeId, includeSource: true }, skip: !changeId || !isMaterialID(changeId), fetchPolicy: "no-cache",
   });
-  const result = changeId ? proposal : publication;
-  const item = publication.data?.publishedMaterial;
   const edit = proposal.data?.materialChangeProposal;
+  const editable = !!changeId && edit?.id === changeId && edit.status === "open" && !!userId &&
+    edit.authorId === userId && isMaterialID(edit.head.id) && typeof edit.head.source === "string";
+  const rebasePublication = useQuery<{ publishedMaterial: PublishedMaterial | null }>(PUBLISHED_MATERIAL_QUERY, {
+    variables: { id: edit?.materialId },
+    skip: !rebase || !editable || !isMaterialID(edit.materialId), fetchPolicy: "no-cache",
+  });
+  const result = !changeId ? publication : rebase && editable ? rebasePublication : proposal;
+  const item = publication.data?.publishedMaterial;
   const base = item?.revision;
   const back = changeId && isMaterialID(changeId) ? changeHref(changeId) : isMaterialID(id) ? `/materials/${id}` : "/materials";
   const creatable = !changeId && item?.id === id && item.status === "published" && base?.format === "markdown" &&
     base.id === item.publishedRevisionId && isMaterialID(base.id);
-  const editable = !!changeId && edit?.id === changeId && edit.status === "open" && !!userId &&
-    edit.authorId === userId && isMaterialID(edit.head.id) && typeof edit.head.source === "string";
+  const published = rebasePublication.data?.publishedMaterial;
+  const newer = published?.revision;
+  const canRebase = rebase && editable && published?.id === edit.materialId && published.status === "published" &&
+    newer?.format === "markdown" && newer.id === published.publishedRevisionId && isMaterialID(newer.id) && newer.id !== edit.baseRevisionId;
   const retry = result.error && result.error.graphQLErrors.every(({ extensions }) =>
     extensions?.code !== "NOT_FOUND" && extensions?.code !== "PERMISSION_DENIED");
 
@@ -42,7 +50,12 @@ export default function MaterialChangeFormPage() {
         <button type="button" className="button button--ghost" onClick={() => void result.refetch().catch(() => undefined)}>Повторить</button>
       </div> : creatable ? <ChangeForm key={id} target={{ materialId: id, baseRevisionId: base.id, number: base.number }}
         source={base.source} title={item.title} /> :
-        editable ? <ChangeForm key={changeId} target={{ proposalId: changeId, expectedHeadId: edit.head.id, number: edit.head.ordinal }}
-          source={edit.head.source!} /> : <div className="content-state"><h1>Редактор недоступен</h1></div>}
+        canRebase ? <ChangeForm key={changeId} target={{
+          proposalId: changeId, expectedHeadId: edit.head.id, number: edit.head.ordinal,
+          newBase: { id: newer.id, source: newer.source, number: newer.number },
+        }} source={edit.head.source ?? ""} title={published.title} /> :
+          editable && !rebase ? <ChangeForm key={changeId} target={{ proposalId: changeId, expectedHeadId: edit.head.id, number: edit.head.ordinal }}
+            source={edit.head.source ?? ""} /> :
+            <div className="content-state"><h1>{rebase && editable ? "Новая основа недоступна" : "Редактор недоступен"}</h1></div>}
   </main>;
 }
