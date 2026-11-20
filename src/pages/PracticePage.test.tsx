@@ -50,7 +50,7 @@ const goalMock = (saved: typeof goal | null = null): MockedResponse => ({
 function show(mocks: MockedResponse[] = [], authenticated = true, link?: ApolloLink) {
   const goalMocks = mocks.some((mock) => mock.request.query === PRACTICE_GOAL_QUERY) ? [] : [goalMock()];
   return render(<MockedProvider link={link} mocks={[meMock(authenticated ? undefined : null), ...goalMocks, ...mocks]}>
-    <MemoryRouter initialEntries={["/practice"]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><AuthProvider><ThemeProvider>
+    <MemoryRouter initialEntries={["/practice"]}><AuthProvider><ThemeProvider>
       <Header /><AppRoutes />
     </ThemeProvider></AuthProvider></MemoryRouter>
   </MockedProvider>);
