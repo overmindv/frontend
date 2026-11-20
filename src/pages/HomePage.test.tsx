@@ -25,3 +25,25 @@ test("ошибка загрузки главной не выглядит как 
   expect(screen.queryByText("Задач пока нет")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Повторить" })).toBeInTheDocument();
 });
+
+test("новости показывают материал рядом с задачей", async () => {
+  const pagination = { limit: 8, offset: 0 };
+  const href = "/materials/a3300000-0000-4000-8000-000000000001";
+  const activity = { __typename: "FeedItem", text: "", actorUserId: "", occurredAt: "2026-11-20T12:00:00Z" };
+  render(<MockedProvider mocks={[
+    {
+      request: { query: IT_TASKS_QUERY, variables: { filter: {}, pagination } },
+      result: { data: { itTasks: { items: [], ...pagination } } },
+    },
+    {
+      request: { query: FEED_QUERY, variables: { pagination } },
+      result: { data: { feed: { ...pagination, items: [
+        { ...activity, id: "material", kind: "material_published", title: "Графы", href },
+        { ...activity, id: "task", kind: "task_published", title: "Поиск в ширину", href: "/tasks/1" },
+      ] } } },
+    },
+  ]}><MemoryRouter><HomePage /></MemoryRouter></MockedProvider>);
+
+  expect(await screen.findByRole("link", { name: "Графы Новый материал" })).toHaveAttribute("href", href);
+  expect(screen.getByRole("link", { name: "Поиск в ширину Новая задача" })).toHaveAttribute("href", "/tasks/1");
+});

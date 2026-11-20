@@ -9,7 +9,8 @@ export type FeedKind =
   | "course_activated"
   | "topic_created"
   | "topic_activated"
-  | "task_published";
+  | "task_published"
+  | "material_published";
 
 export interface FeedItem {
   id: string;

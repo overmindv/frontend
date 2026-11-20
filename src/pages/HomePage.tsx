@@ -1,7 +1,7 @@
 import { useQuery } from "@apollo/client";
 import { ArrowRight, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
-import { FEED_QUERY, type FeedConnection } from "../api/feed";
+import { FEED_QUERY, type FeedConnection, type FeedKind } from "../api/feed";
 import { IT_TASKS_QUERY, type ITTaskList } from "../api/tasks";
 import { getErrorMessage } from "../api/errors";
 import { ErrorMessage } from "../components/common/ErrorMessage";
@@ -57,4 +57,10 @@ export function HomePage() {
 
 function difficultyLabel(value: string) { return value === "easy" ? "Начальная" : value === "medium" ? "Средняя" : "Сложная"; }
 function typeLabel(value: string) { return value === "programming" ? "Программирование" : value === "single_choice" ? "Один ответ" : "Несколько ответов"; }
-function feedKindLabel(kind: string) { return kind === "task_published" ? "Новая задача" : "Обновление каталога"; }
+function feedKindLabel(kind: FeedKind) {
+  switch (kind) {
+    case "task_published": return "Новая задача";
+    case "material_published": return "Новый материал";
+    default: return "Обновление каталога";
+  }
+}
