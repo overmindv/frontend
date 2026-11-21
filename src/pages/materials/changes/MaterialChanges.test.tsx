@@ -10,6 +10,7 @@ import {
   MATERIAL_CHANGE_HISTORY_QUERY, MATERIAL_CHANGE_QUERY, OPEN_MATERIAL_CHANGE_MUTATION, type MaterialChange,
 } from "../../../api/materialChanges";
 import { PUBLISHED_MATERIAL_QUERY } from "../../../api/materials";
+import { REBASE_MATERIAL_CHANGE_MUTATION } from "../../../api/materialReview";
 import MaterialChangeFormPage from "./MaterialChangeFormPage";
 import MaterialChangePage from "./MaterialChangePage";
 import { changeHref } from "./changeRoutes";
@@ -57,6 +58,7 @@ function show(mocks: MockedResponse[], initial = changeHref(id)) {
   const router = createMemoryRouter([
     { path: "/materials/:id/changes/new", element: <MaterialChangeFormPage /> },
     { path: "/materials/changes/:changeId/edit", element: <MaterialChangeFormPage /> },
+    { path: "/materials/changes/:changeId/rebase", element: <MaterialChangeFormPage rebase /> },
     { path: "/materials/changes/:changeId", element: <MaterialChangePage /> },
   ], { initialEntries: [initial] });
   render(<MockedProvider mocks={mocks} addTypename={false} cache={new InMemoryCache({ addTypename: false })}>
@@ -152,5 +154,33 @@ describe("material proposals", () => {
     await user.click(screen.getByRole("button", { name: "Следующая страница" }));
     expect(within(region).getByText("+Строка 251")).toBeInTheDocument();
     expect(region.querySelectorAll(".change-line")).toHaveLength(1);
+  });
+
+  it("rebases a manually checked draft onto the latest published revision", async () => {
+    const nextBase = idFor(58), nextHead = idFor(59);
+    const text = "# Очередь\nНовая основа и пример\n";
+    const proposal = { ...change, baseOutdated: true, head: { ...change.head, source: revised } };
+    const user = show([
+      makeRead(proposal, true),
+      { request: { query: PUBLISHED_MATERIAL_QUERY, variables: { id: materialId } }, result: { data: { publishedMaterial: {
+        id: materialId, title: "Графы", description: "", status: "published", authorId: visitor, publishedAt: time, publishedRevisionId: nextBase,
+        revision: { id: nextBase, number: 5, format: "markdown", source: "# Новая основа\n" }, attachments: [], learning: null,
+      } } } },
+      { request: { query: REBASE_MATERIAL_CHANGE_MUTATION, variables: {
+        input: { proposalId: id, expectedHeadId: headId, baseRevisionId: nextBase, source: text, message: "" },
+      } }, result: { data: { rebaseMaterialChange: { id, baseRevisionId: nextBase, head: { id: nextHead, ordinal: 3, source: text } } } } },
+      makeRead({ ...change, baseRevisionId: nextBase, head: { ...change.head, id: nextHead, ordinal: 3 } }),
+      makeAuthor(), makeDiff(nextHead),
+    ], changeHref(id) + "/rebase");
+    const field = await screen.findByLabelText("Текст правки");
+    expect(field).toHaveValue(revised);
+    expect(screen.getByText("Опубликованная версия 5")).toBeInTheDocument();
+    const save = screen.getByRole("button", { name: "Сохранить на новой основе" });
+    expect(save).toBeDisabled();
+    await user.clear(field);
+    await user.type(field, text);
+    await user.click(screen.getByRole("checkbox", { name: "Сверил текст с новой опубликованной версией" }));
+    await user.click(save);
+    expect(await screen.findByRole("heading", { name: "Основание и версия 3" })).toBeInTheDocument();
   });
 });
