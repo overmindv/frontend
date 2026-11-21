@@ -141,16 +141,22 @@
   min-width: 0;
 }
 
-.material-aside h2 {
+.material-aside h2,
+.material-attachments h2 {
   font-size: 16px;
   margin-bottom: 10px;
 }
 
-.material-aside-section {
+.material-aside-section,
+.material-attachments {
   border-top: 1px solid var(--border);
   margin-bottom: 18px;
   overflow-wrap: anywhere;
   padding-top: 12px;
+}
+
+.material-attachments {
+  margin-top: 24px;
 }
 
 .material-file {

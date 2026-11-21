@@ -65,7 +65,7 @@ function MaterialFile({ file, publication }: { file: MaterialAttachment; publica
 export function MaterialAttachments({ files, publication }: { files: MaterialAttachment[]; publication: Publication }) {
   const validFiles = files.filter((file) => Object.hasOwn(kinds, file.kind) && isMaterialID(file.fileId));
   if (!validFiles.length) return null;
-  return <section className="material-aside-section">
+  return <section className="material-attachments">
     <h2>Вложения</h2>
     <ul className="material-file-list">
       {validFiles.map((file) => <MaterialFile file={file} publication={publication} key={file.fileId} />)}

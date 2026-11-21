@@ -1,6 +1,6 @@
 import { InMemoryCache } from "@apollo/client";
 import { MockedProvider, type MockedResponse } from "@apollo/client/testing";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GraphQLError } from "graphql";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -123,6 +123,26 @@ describe("material pages", () => {
     }]);
     expect(await screen.findByRole("heading", { name: "Материал не найден" })).toBeInTheDocument();
     expect(screen.queryByText("private upstream detail")).not.toBeInTheDocument();
+  });
+
+  it("lists a photo after the article text and requests its download on demand", async () => {
+    const url = "http://localhost:9000/materials/diagram.webp?sig=fixture";
+    const photoDownload = download(url);
+    const getDownload = vi.fn(() => photoDownload.result);
+    show(`/materials/${id}`, [
+      published({ ...material, learning: null, attachments: [{ fileId, title: "Граф.png", kind: "image", position: 0 }] }),
+      { ...photoDownload, result: getDownload },
+    ]);
+    const user = userEvent.setup();
+    const article = await screen.findByRole("article");
+    const source = within(article).getByText("Опубликованный текст");
+    const heading = within(article).getByRole("heading", { name: "Вложения" });
+    expect(source.compareDocumentPosition(heading)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(within(article).getByText("Граф.png")).toBeInTheDocument();
+    expect(getDownload).not.toHaveBeenCalled();
+    await user.click(within(article).getByRole("button", { name: "Скачать" }));
+    expect(await within(article).findByRole("link", { name: "Открыть" })).toHaveAttribute("href", url);
+    expect(getDownload).toHaveBeenCalledOnce();
   });
 
   it("blocks a Media response with an untrusted link and allows requesting a new one", async () => {

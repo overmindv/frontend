@@ -46,7 +46,7 @@ function MaterialReadContent({ id, back }: { id: string; back: string }) {
   </div></main>;
 
   const isOwner = userId !== null && userId === material.authorId;
-  const showAside = !!(material.attachments.length || topicIds.length || isOwner);
+  const showAside = topicIds.length > 0 || isOwner;
   return <main className="page-shell material-reader">
     {backLink}
     <header className="page-heading material-reader-heading">
@@ -72,9 +72,9 @@ function MaterialReadContent({ id, back }: { id: string; back: string }) {
     <div className={showAside ? "material-reader-layout with-aside" : "material-reader-layout"}>
       <article className="material-article">
         <MaterialMarkdown source={revision.source} />
+        <MaterialAttachments files={material.attachments} publication={{ materialId: material.id, revisionId: revision.id }} key={revision.id} />
       </article>
       {showAside && <aside className="material-aside">
-        <MaterialAttachments files={material.attachments} publication={{ materialId: material.id, revisionId: revision.id }} key={revision.id} />
         {topicIds[0] && <MaterialRelatedTasks topicId={topicIds[0]} />}
         {isOwner && <MaterialHistory id={id} />}
       </aside>}
