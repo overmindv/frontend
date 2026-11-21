@@ -172,6 +172,20 @@
   margin-top: 3px;
 }
 
+.material-file-preview {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 650;
+  text-align: start;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
 .material-file small,
 .material-history time {
   color: var(--text-muted);

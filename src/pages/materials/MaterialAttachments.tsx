@@ -1,8 +1,9 @@
 import { useApolloClient } from "@apollo/client";
 import { Archive, Download, ExternalLink, FileImage, FileText, Paperclip } from "lucide-react";
 import { useEffect, useState } from "react";
-import { MATERIAL_DOWNLOAD_QUERY, isMaterialID, type MaterialAttachment, type MaterialDownloadResult } from "../../api/materials";
-import { materialDownloadOrigins, materialDownloadURL } from "./materialLinks";
+import { isMaterialID, requestMaterialAttachment, type MaterialAttachment, type MaterialAttachmentLink,
+  type MaterialPublication } from "../../api/materials";
+import { MaterialPhotoViewer } from "./MaterialPhotoViewer";
 
 const kinds = {
   image: { label: "Изображение", icon: FileImage },
@@ -11,15 +12,16 @@ const kinds = {
   archive: { label: "Архив", icon: Archive },
 };
 
-type Publication = { materialId: string; revisionId: string };
-
-function MaterialFile({ file, publication }: { file: MaterialAttachment; publication: Publication }) {
+function MaterialFile({ file, publication, onPreview }: {
+  file: MaterialAttachment; publication: MaterialPublication; onPreview?: () => void;
+}) {
   const client = useApolloClient();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [link, setLink] = useState<{ href: string; expiresAt: number } | null>(null);
+  const [link, setLink] = useState<MaterialAttachmentLink | null>(null);
   const kind = kinds[file.kind];
   const Icon = kind.icon;
+  const title = file.title || kind.label;
 
   useEffect(() => {
     if (!link) return;
@@ -28,19 +30,12 @@ function MaterialFile({ file, publication }: { file: MaterialAttachment; publica
   }, [link]);
 
   async function requestDownload() {
-    if (pending || !isMaterialID(file.fileId)) return;
+    if (pending) return;
     setPending(true);
     setFailed(false);
     try {
-      const { data } = await client.query<MaterialDownloadResult>({
-        query: MATERIAL_DOWNLOAD_QUERY,
-        variables: { ...publication, fileId: file.fileId },
-        fetchPolicy: "no-cache",
-      });
-      const download = data.publishedMaterialAttachmentDownload;
-      const href = download && materialDownloadURL(download.url, materialDownloadOrigins);
-      const expiresAt = download ? Date.parse(download.expiresAt) : 0;
-      if (href && expiresAt > Date.now()) setLink({ href, expiresAt });
+      const next = await requestMaterialAttachment(client, publication, file.fileId);
+      if (next) setLink(next);
       else setFailed(true);
     } catch {
       setFailed(true);
@@ -51,7 +46,11 @@ function MaterialFile({ file, publication }: { file: MaterialAttachment; publica
 
   return <li className="material-file">
     <Icon size={17} aria-hidden="true" />
-    <div><strong>{file.title || kind.label}</strong>{file.title && <small>{kind.label}</small>}
+    <div>
+      {onPreview ? <button className="material-file-preview" type="button" aria-label={`Открыть фото: ${title}`} onClick={onPreview}>
+        {title}
+      </button> : <strong>{title}</strong>}
+      {file.title && <small>{kind.label}</small>}
       {failed && <small role="status">Скачивание недоступно</small>}
     </div>
     {link ? <a className="button button--ghost" href={link.href} rel="noopener noreferrer" target="_blank">
@@ -62,13 +61,20 @@ function MaterialFile({ file, publication }: { file: MaterialAttachment; publica
   </li>;
 }
 
-export function MaterialAttachments({ files, publication }: { files: MaterialAttachment[]; publication: Publication }) {
+export function MaterialAttachments({ files, publication }: { files: MaterialAttachment[]; publication: MaterialPublication }) {
+  const [photoID, setPhotoID] = useState<string | null>(null);
   const validFiles = files.filter((file) => Object.hasOwn(kinds, file.kind) && isMaterialID(file.fileId));
+  const photos = validFiles.filter((file) => file.kind === "image");
+  const photoIndex = photos.findIndex((file) => file.fileId === photoID);
   if (!validFiles.length) return null;
   return <section className="material-attachments">
     <h2>Вложения</h2>
     <ul className="material-file-list">
-      {validFiles.map((file) => <MaterialFile file={file} publication={publication} key={file.fileId} />)}
+      {validFiles.map((file) => <MaterialFile file={file} publication={publication} key={file.fileId}
+        onPreview={file.kind === "image" ? () => setPhotoID(file.fileId) : undefined} />)}
     </ul>
+    {photoIndex >= 0 && <MaterialPhotoViewer file={photos[photoIndex]} publication={publication}
+      index={photoIndex} count={photos.length} onSelect={(index) => setPhotoID(photos[index].fileId)}
+      onClose={() => setPhotoID(null)} />}
   </section>;
 }

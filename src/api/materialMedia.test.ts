@@ -15,8 +15,8 @@ const fetchMock = vi.fn();
 const mutate = vi.mocked(apolloClient.mutate);
 const query = vi.mocked(apolloClient.query);
 
-function sampleFile() {
-  const file = new File(["pdf"], "example.pdf", { type: "application/pdf" });
+function sampleFile(name = "example.pdf", type = "application/pdf") {
+  const file = new File(["123"], name, { type });
   Object.defineProperty(file, "arrayBuffer", { value: () => Promise.resolve(new ArrayBuffer(3)) });
   return file;
 }
@@ -75,7 +75,7 @@ describe("material attachment upload", () => {
 
   it("rejects invalid file types and stops before sending a cancelled upload", async () => {
     expect(attachmentFileError(new File(["text"], "unsafe.html", { type: "text/html" }))).not.toBeNull();
-    const tooLarge = sampleFile();
+    const tooLarge = sampleFile("photo.jpg", "image/jpeg");
     Object.defineProperty(tooLarge, "size", { value: 20 * 1024 * 1024 + 1 });
     expect(attachmentFileError(tooLarge)).toContain("20 МБ");
     const controller = new AbortController();
@@ -83,5 +83,24 @@ describe("material attachment upload", () => {
     await expect(uploadMaterialAttachment(sampleFile(), controller.signal)).rejects.toThrow();
     expect(mutate).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["diagram.jpg", "image/jpeg"],
+    ["diagram.jpeg", "image/jpeg"],
+    ["diagram.png", "image/png"],
+  ])("registers %s as a private content image", async (name, mime) => {
+    const photo = sampleFile(name, mime);
+    mutate.mockResolvedValueOnce(session(uploadURL)).mockResolvedValueOnce({ data: { completeMediaUpload: { id: fileId } } });
+    fetchMock.mockResolvedValue({ ok: true });
+    query.mockResolvedValue({ data: { mediaFile: { status: "ready" } }, loading: false, networkStatus: 7 });
+
+    await expect(uploadMaterialAttachment(photo, new AbortController().signal)).resolves.toEqual({
+      fileId, kind: "image", title: name,
+    });
+    expect(mutate).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      mutation: CREATE_MEDIA_UPLOAD_MUTATION,
+      variables: { input: expect.objectContaining({ contentType: mime, purpose: "content_image", visibility: "private" }) },
+    }));
   });
 });

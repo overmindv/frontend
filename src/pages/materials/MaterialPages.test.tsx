@@ -1,10 +1,10 @@
 import { InMemoryCache } from "@apollo/client";
 import { MockedProvider, type MockedResponse } from "@apollo/client/testing";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GraphQLError } from "graphql";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   MATERIALS_QUERY, MATERIAL_DOWNLOAD_QUERY, MATERIAL_HISTORY_QUERY, MATERIAL_TOPICS_QUERY,
   PUBLISHED_MATERIAL_QUERY, type PublishedMaterial,
@@ -50,9 +50,9 @@ function published(item: PublishedMaterial) {
   return { request: { query: PUBLISHED_MATERIAL_QUERY, variables: { id } }, result: { data: { publishedMaterial: item } } };
 }
 
-function download(url: string, expiresAt = new Date(Date.now() + 30_000).toISOString()) {
+function download(url: string, expiresAt = new Date(Date.now() + 30_000).toISOString(), attachmentId = fileId) {
   return {
-    request: { query: MATERIAL_DOWNLOAD_QUERY, variables: { materialId: id, revisionId: publication, fileId } },
+    request: { query: MATERIAL_DOWNLOAD_QUERY, variables: { materialId: id, revisionId: publication, fileId: attachmentId } },
     result: { data: { publishedMaterialAttachmentDownload: { url, expiresAt } } },
   };
 }
@@ -169,5 +169,82 @@ describe("material pages", () => {
     await user.click(await screen.findByRole("button", { name: "Скачать" }));
     expect(await screen.findByText("Скачивание недоступно")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Открыть" })).not.toBeInTheDocument();
+  });
+});
+
+describe("material photo viewer", () => {
+  beforeAll(() => {
+    Object.defineProperties(HTMLDialogElement.prototype, {
+      showModal: { configurable: true, value(this: HTMLDialogElement) { this.open = true; } },
+      close: { configurable: true, value(this: HTMLDialogElement) { this.open = false; } },
+    });
+  });
+
+  const firstPhoto = { fileId, kind: "image" as const, title: "Схема.png", position: 0 };
+  const secondPhoto = { fileId: "00000000-0000-4000-8000-000000000208", kind: "image" as const, title: "Пример.jpg", position: 2 };
+  const firstURL = "http://localhost:9000/materials/diagram.webp?sig=first";
+  const secondURL = "http://localhost:9000/materials/example.webp?sig=second";
+
+  it("loads only the selected photo and skips other attachment types when moving", async () => {
+    const first = download(firstURL);
+    const second = download(secondURL, undefined, secondPhoto.fileId);
+    const firstResult = vi.fn(() => first.result);
+    const secondResult = vi.fn(() => second.result);
+    const pdf = { fileId: "00000000-0000-4000-8000-000000000209", kind: "pdf" as const, title: "Справка.pdf", position: 1 };
+    show(`/materials/${id}`, [
+      published({ ...material, learning: null, attachments: [firstPhoto, pdf, secondPhoto] }),
+      { ...first, result: firstResult, maxUsageCount: 2 },
+      { ...second, result: secondResult },
+    ]);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Открыть фото: Схема.png" }));
+    const dialog = await screen.findByRole("dialog", { name: "Просмотр фото" });
+    const viewer = within(dialog);
+    expect(await viewer.findByRole("img", { name: "Схема.png" })).toHaveAttribute("src", firstURL);
+    expect(firstResult).toHaveBeenCalledOnce();
+    expect(secondResult).not.toHaveBeenCalled();
+    expect(viewer.getByText("1 / 2")).toBeInTheDocument();
+    expect(viewer.getByRole("button", { name: "Предыдущее фото" })).toHaveAttribute("aria-disabled", "true");
+
+    fireEvent.keyDown(dialog, { key: "ArrowRight" });
+    expect(viewer.queryByRole("img", { name: "Схема.png" })).not.toBeInTheDocument();
+    expect(await viewer.findByRole("img", { name: "Пример.jpg" })).toHaveAttribute("src", secondURL);
+    expect(viewer.getByText("2 / 2")).toBeInTheDocument();
+    expect(viewer.getByRole("button", { name: "Следующее фото" })).toHaveAttribute("aria-disabled", "true");
+    await user.click(viewer.getByRole("button", { name: "Предыдущее фото" }));
+    expect(await viewer.findByRole("img", { name: "Схема.png" })).toHaveAttribute("src", firstURL);
+    expect(firstResult).toHaveBeenCalledTimes(2);
+    expect(secondResult).toHaveBeenCalledOnce();
+
+    await user.click(viewer.getByRole("button", { name: "Закрыть фото" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("does not render a foreign URL and can retry a failed image", async () => {
+    show(`/materials/${id}`, [
+      published({ ...material, learning: null, attachments: [firstPhoto] }),
+      download("https://untrusted.example/photo.webp"),
+      download(firstURL),
+      download(firstURL),
+    ]);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Открыть фото: Схема.png" }));
+    const dialog = await screen.findByRole("dialog");
+    const viewer = within(dialog);
+    expect(await viewer.findByText("Не удалось открыть фото")).toBeInTheDocument();
+    expect(viewer.queryByRole("img")).not.toBeInTheDocument();
+    await user.click(viewer.getByRole("button", { name: "Повторить" }));
+    expect(viewer.getByRole("button", { name: "Закрыть фото" })).toHaveFocus();
+    const image = await viewer.findByRole("img");
+    expect(image).toHaveAttribute("referrerpolicy", "no-referrer");
+    fireEvent.error(image);
+    await user.click(await viewer.findByRole("button", { name: "Повторить" }));
+    const retried = await viewer.findByRole("img");
+    fireEvent.load(retried);
+    expect(retried).toHaveAttribute("src", firstURL);
+    expect(viewer.queryByText("Загружаем фото")).not.toBeInTheDocument();
+
+    fireEvent.click(dialog);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
