@@ -80,6 +80,81 @@
   resize: vertical;
 }
 
+.editor-photo-tools {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.editor-photo-picker {
+  width: min(420px, calc(100% - 24px));
+  max-height: min(560px, calc(100% - 24px));
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.editor-photo-picker::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.editor-photo-header,
+.editor-photo-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.editor-photo-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.editor-photo-choices {
+  max-height: 280px;
+  overflow: auto;
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.editor-photo-choice {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+.editor-fields .editor-photo-choice input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+}
+
+.editor-photo-choice > span:last-child {
+  color: var(--text-secondary);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.editor-photo-preview {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+}
+
+.editor-photo-preview ol {
+  margin: 0;
+  padding-inline-start: 20px;
+}
+
 .editor-preview {
   border: 1px solid var(--border);
   border-radius: var(--r-md);

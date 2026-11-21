@@ -1,6 +1,6 @@
 import { InMemoryCache } from "@apollo/client";
 import { MockedProvider, type MockedResponse } from "@apollo/client/testing";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GraphQLError } from "graphql";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
@@ -65,6 +65,59 @@ function show(mocks: MockedResponse[], path = `/materials/${id}/edit`) {
 async function addLine(user: ReturnType<typeof userEvent.setup>) {
   await user.type(await screen.findByLabelText("Текст Markdown"), "{End}{Enter}Новая строка");
 }
+
+describe("draft photo groups", () => {
+  const secondFile = "00000000-0000-4000-8000-000000000212";
+  const photos = [
+    { fileId, kind: "image" as const, title: "Первое.png", position: 0 },
+    { fileId: secondFile, kind: "image" as const, title: "Второе.jpg", position: 1 },
+  ];
+  const photoDraft: MaterialDraft = {
+    ...draft, revision: { ...original, source: "Первый абзац.\n\nСледующий абзац." }, attachments: [...photos],
+  };
+  const group = "```ovm-photos\n" + secondFile + "\n" + fileId + "\n```";
+
+  it("inserts selected photos in click order and saves the same source", async () => {
+    const source = "Первый абзац.\n\n" + group + "\n\nСледующий абзац.";
+    const user = show([
+      readDraft(photoDraft),
+      mutation({ ...input, source }, { data: { saveMaterialDraft: { ...original, id: secondId, number: 2, source } } }),
+    ]);
+    const textarea = await screen.findByLabelText<HTMLTextAreaElement>("Текст Markdown");
+    const cursor = textarea.value.indexOf("Следующий");
+    await user.click(textarea);
+    textarea.setSelectionRange(cursor, cursor);
+    await user.click(screen.getByRole("button", { name: "Вставить фото" }));
+    const picker = within(await screen.findByRole("dialog", { name: "Вставить фото" }));
+    await user.click(picker.getByRole("checkbox", { name: "Второе.jpg" }));
+    await user.click(picker.getByRole("checkbox", { name: "Первое.png" }));
+    expect(picker.getByText("2 / 10")).toBeInTheDocument();
+    await user.click(picker.getByRole("button", { name: "Вставить" }));
+    expect(textarea).toHaveValue(source);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Предпросмотр" }));
+    await vi.dynamicImportSettled();
+    const preview = within(await screen.findByRole("figure", { name: "Группа фото" }));
+    expect(preview.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Второе.jpg", "Первое.png"]);
+    expect(preview.queryByRole("img")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Сохранить" }));
+    expect(await screen.findByText("Черновик сохранен")).toBeInTheDocument();
+  });
+
+  it("does not send a draft with a group pointing to a removed photo", async () => {
+    const read = { ...photoDraft, revision: { ...original, source: group } };
+    const matched = vi.fn(() => true);
+    const user = show([readDraft(read), {
+      request: { query: SAVE_MATERIAL_DRAFT_MUTATION },
+      variableMatcher: matched, result: saveSuccess,
+    }]);
+    await user.click(await screen.findByRole("button", { name: "Убрать вложение: Второе.jpg" }));
+    await user.click(screen.getByRole("button", { name: "Сохранить" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("В тексте есть фото, которого нет во вложениях.");
+    expect(matched).not.toHaveBeenCalled();
+  });
+});
 
 describe("material draft editor", () => {
   it("creates a draft explicitly and opens its own edit route", async () => {

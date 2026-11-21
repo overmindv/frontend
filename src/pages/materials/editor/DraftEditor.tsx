@@ -9,6 +9,7 @@ import {
 import { isMaterialID } from "../../../api/materials";
 import { Spinner } from "../../../components/common/Spinner";
 import { DraftAttachments } from "./DraftAttachments";
+import { DraftPhotoText } from "./DraftPhotoText";
 import { DraftTopics } from "./DraftTopics";
 import { attachmentInputs, changes, draftFields, draftInputError, emptyDraft, isMarkdownRevision, isOwnedDraft, sourceTooLarge } from "./draftForm";
 import { useDraftGuard } from "./useDraftGuard";
@@ -59,6 +60,14 @@ export function DraftEditor({ material, authorId }: { material?: MaterialDraft; 
     setPending(true);
     setStatus("");
     try {
+      if (fields.source.includes("ovm-photos")) {
+        const { photoAttachmentProblem } = await import("./materialPhotoEditing");
+        const problem = photoAttachmentProblem(fields.source, fields.attachments);
+        if (problem) {
+          setError(problem);
+          return;
+        }
+      }
       const values = { ...fields, title: fields.title.trim() };
       if (!material && !created) {
         slug.current ||= `material-${crypto.randomUUID()}`;
@@ -140,10 +149,16 @@ export function DraftEditor({ material, authorId }: { material?: MaterialDraft; 
             {preview ? <div className="editor-preview">
               {sourceTooLarge(fields.source) ? <p className="message message--error" role="alert">Для предпросмотра текст должен занимать не больше 128 КБ.</p> :
                 fields.source.trim() ? <Suspense fallback={<Spinner label="Загружаем предпросмотр" />}>
-                  <MaterialPreview source={fields.source} />
+                  <MaterialPreview source={fields.source} photos={(ids) => {
+                    const names = ids.map((id) => fields.attachments.find((file) => file.kind === "image" && file.fileId === id)?.title);
+                    if (names.some((name) => name === undefined)) return <p>В группе есть фото, которого нет во вложениях.</p>;
+                    return <figure className="editor-photo-preview" aria-label="Группа фото">
+                      <ol>{ids.map((id, index) => <li key={id}>{names[index] || "Фото"}</li>)}</ol>
+                    </figure>;
+                  }} />
                 </Suspense> : <p>Нет текста</p>}
-            </div> : <textarea aria-label="Текст Markdown" spellCheck={false} value={fields.source}
-              onChange={(event) => edit("source", event.target.value)} />}
+            </div> : <DraftPhotoText source={fields.source} attachments={fields.attachments} busy={busy}
+              onChange={(value) => edit("source", value)} />}
           </section>
           <aside className="editor-sidebar">
             <DraftTopics ids={fields.topicIds} onChange={(ids) => edit("topicIds", ids)} />
