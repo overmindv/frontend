@@ -11,7 +11,9 @@ const kinds = {
   archive: { label: "Архив", icon: Archive },
 };
 
-function MaterialFile({ file }: { file: MaterialAttachment }) {
+type Publication = { materialId: string; revisionId: string };
+
+function MaterialFile({ file, publication }: { file: MaterialAttachment; publication: Publication }) {
   const client = useApolloClient();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -32,11 +34,12 @@ function MaterialFile({ file }: { file: MaterialAttachment }) {
     try {
       const { data } = await client.query<MaterialDownloadResult>({
         query: MATERIAL_DOWNLOAD_QUERY,
-        variables: { id: file.fileId },
+        variables: { ...publication, fileId: file.fileId },
         fetchPolicy: "no-cache",
       });
-      const href = materialDownloadURL(data.mediaDownloadUrl.url, materialDownloadOrigins);
-      const expiresAt = Date.parse(data.mediaDownloadUrl.expiresAt);
+      const download = data.publishedMaterialAttachmentDownload;
+      const href = download && materialDownloadURL(download.url, materialDownloadOrigins);
+      const expiresAt = download ? Date.parse(download.expiresAt) : 0;
       if (href && expiresAt > Date.now()) setLink({ href, expiresAt });
       else setFailed(true);
     } catch {
@@ -59,11 +62,13 @@ function MaterialFile({ file }: { file: MaterialAttachment }) {
   </li>;
 }
 
-export function MaterialAttachments({ files }: { files: MaterialAttachment[] }) {
+export function MaterialAttachments({ files, publication }: { files: MaterialAttachment[]; publication: Publication }) {
   const validFiles = files.filter((file) => Object.hasOwn(kinds, file.kind) && isMaterialID(file.fileId));
   if (!validFiles.length) return null;
   return <section className="material-aside-section">
     <h2>Вложения</h2>
-    <ul className="material-file-list">{validFiles.map((file) => <MaterialFile file={file} key={file.fileId} />)}</ul>
+    <ul className="material-file-list">
+      {validFiles.map((file) => <MaterialFile file={file} publication={publication} key={file.fileId} />)}
+    </ul>
   </section>;
 }

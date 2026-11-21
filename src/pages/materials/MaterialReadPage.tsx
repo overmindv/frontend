@@ -74,7 +74,7 @@ function MaterialReadContent({ id, back }: { id: string; back: string }) {
         <MaterialMarkdown source={revision.source} />
       </article>
       {showAside && <aside className="material-aside">
-        <MaterialAttachments files={material.attachments} />
+        <MaterialAttachments files={material.attachments} publication={{ materialId: material.id, revisionId: revision.id }} key={revision.id} />
         {topicIds[0] && <MaterialRelatedTasks topicId={topicIds[0]} />}
         {isOwner && <MaterialHistory id={id} />}
       </aside>}

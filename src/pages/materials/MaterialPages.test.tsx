@@ -50,10 +50,10 @@ function published(item: PublishedMaterial) {
   return { request: { query: PUBLISHED_MATERIAL_QUERY, variables: { id } }, result: { data: { publishedMaterial: item } } };
 }
 
-function download(url: string) {
+function download(url: string, expiresAt = new Date(Date.now() + 30_000).toISOString()) {
   return {
-    request: { query: MATERIAL_DOWNLOAD_QUERY, variables: { id: fileId } },
-    result: { data: { mediaDownloadUrl: { url, expiresAt: "2099-01-01T00:00:00Z" } } },
+    request: { query: MATERIAL_DOWNLOAD_QUERY, variables: { materialId: id, revisionId: publication, fileId } },
+    result: { data: { publishedMaterialAttachmentDownload: { url, expiresAt } } },
   };
 }
 
@@ -138,5 +138,16 @@ describe("material pages", () => {
     await user.click(screen.getByRole("button", { name: "Скачать" }));
     expect(await screen.findByRole("link", { name: "Открыть" }))
       .toHaveAttribute("href", "http://localhost:9000/materials/file.pdf?sig=fixture");
+  });
+
+  it("does not open an expired link from the publication download query", async () => {
+    show(`/materials/${id}`, [
+      published({ ...material, learning: null }),
+      download("http://localhost:9000/materials/file.pdf?sig=old", "2000-01-01T00:00:00Z"),
+    ]);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Скачать" }));
+    expect(await screen.findByText("Скачивание недоступно")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Открыть" })).not.toBeInTheDocument();
   });
 });

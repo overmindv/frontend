@@ -36,8 +36,8 @@ export const MATERIAL_HISTORY_QUERY = gql`
 `;
 
 export const MATERIAL_DOWNLOAD_QUERY = gql`
-  query MaterialDownload($id: ID!) {
-    mediaDownloadUrl(fileId: $id) { url expiresAt }
+  query MaterialDownload($materialId: ID!, $revisionId: ID!, $fileId: ID!) {
+    publishedMaterialAttachmentDownload(materialId: $materialId, revisionId: $revisionId, fileId: $fileId) { url expiresAt }
   }
 `;
 
@@ -75,7 +75,7 @@ export type MaterialHistoryResult = {
   } | null;
 };
 
-export type MaterialDownloadResult = { mediaDownloadUrl: { url: string; expiresAt: string } };
+export type MaterialDownloadResult = { publishedMaterialAttachmentDownload: { url: string; expiresAt: string } | null };
 
 export function materialsHref(topic?: string | null, cursor?: string | null, drafts = false) {
   const params = new URLSearchParams();
