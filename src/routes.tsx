@@ -1,5 +1,6 @@
 import { SavedPlansPage } from "./pages/SavedPlansPage";
 import { SavedPlanPage } from "./pages/SavedPlanPage";
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { PublicOnlyRoute } from "./components/PublicOnlyRoute";
@@ -18,6 +19,10 @@ import { PracticePage } from "./pages/PracticePage";
 import { SearchPage } from "./pages/SearchPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { ComparePage } from "./pages/ComparePage";
+import { Spinner } from "./components/common/Spinner";
+
+const MaterialCatalogPage = lazy(() => import("./pages/materials/MaterialCatalogPage"));
+const MaterialReadPage = lazy(() => import("./pages/materials/MaterialReadPage"));
 
 export function AppRoutes() {
   return (
@@ -34,6 +39,8 @@ export function AppRoutes() {
       <Route path="/courses/:id" element={<CatalogDetailPage kind="courses" />} />
       <Route path="/topics" element={<CatalogBrowsePage kind="topics" />} />
       <Route path="/topics/:id" element={<CatalogDetailPage kind="topics" />} />
+      <Route path="/materials" element={<PrivateRoute><Suspense fallback={<Spinner label="Загружаем материалы" />}><MaterialCatalogPage /></Suspense></PrivateRoute>} />
+      <Route path="/materials/:id" element={<PrivateRoute><Suspense fallback={<Spinner label="Открываем материал" />}><MaterialReadPage /></Suspense></PrivateRoute>} />
       <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
       <Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
       <Route path="/tasks" element={<TasksPage />} />

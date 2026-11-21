@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { COURSE_QUERY, COURSES_QUERY, PROGRAM_QUERY, PROGRAMS_QUERY, TOPIC_QUERY, TOPICS_QUERY, UNIVERSITY_QUERY, UNIVERSITIES_QUERY, type Course, type Program, type Topic, type University } from "../api/catalog";
 import { ErrorMessage } from "../components/common/ErrorMessage";
+import { materialsHref } from "../api/materials";
 import { Spinner } from "../components/common/Spinner";
 
 type CatalogKind = "universities" | "programs" | "courses" | "topics";
@@ -54,7 +55,9 @@ export function CatalogDetailPage({ kind }: { kind: CatalogKind }) {
   if (loading && !item) return <main className="page-shell content-state"><Spinner label="Открываем элемент каталога…" /></main>;
   if (error || !item) return <main className="page-shell"><ErrorMessage message={error?.message ?? "Элемент не найден"} /></main>;
 
-  return <main className="page-shell catalog-detail"><Link className="back-link" to={page.back}>← Назад в раздел</Link><article><span className="section-kicker">{page.label}</span><h1>{itemTitle(item)}</h1><p>{itemDescription(item)}</p><dl>{detailRows(item).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || "Не указано"}</dd></div>)}</dl></article></main>;
+  return <main className="page-shell catalog-detail"><Link className="back-link" to={page.back}>← Назад в раздел</Link><article><span className="section-kicker">{page.label}</span><h1>{itemTitle(item)}</h1><p>{itemDescription(item)}</p><dl>{detailRows(item).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || "Не указано"}</dd></div>)}</dl>
+    {kind === "topics" && <Link className="button button--ghost" to={materialsHref(item.id)}>Материалы по теме <ArrowRight size={15} aria-hidden="true" /></Link>}
+  </article></main>;
 }
 
 function itemTitle(item: CatalogItem) { return "name" in item ? item.name : item.title; }
