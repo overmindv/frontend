@@ -1,4 +1,5 @@
-import { gql } from "@apollo/client";
+import { gql, type ApolloClient } from "@apollo/client";
+import { mediaStorageOrigins, mediaStorageURL } from "./mediaStorage";
 
 export const MATERIALS_QUERY = gql`
   query Materials($topicId: ID, $cursor: String) {
@@ -75,7 +76,27 @@ export type MaterialHistoryResult = {
   } | null;
 };
 
-export type MaterialDownloadResult = { publishedMaterialAttachmentDownload: { url: string; expiresAt: string } | null };
+type MaterialDownloadResult = { publishedMaterialAttachmentDownload: { url: string; expiresAt: string } | null };
+
+export type MaterialPublication = { materialId: string; revisionId: string };
+export type MaterialAttachmentLink = { href: string; expiresAt: number };
+
+export async function requestMaterialAttachment(
+  client: ApolloClient<object>, publication: MaterialPublication, fileId: string, signal?: AbortSignal,
+): Promise<MaterialAttachmentLink | null> {
+  if (!isMaterialID(fileId)) return null;
+  const { data } = await client.query<MaterialDownloadResult>({
+    query: MATERIAL_DOWNLOAD_QUERY,
+    variables: { ...publication, fileId },
+    fetchPolicy: "no-cache",
+    context: signal ? { fetchOptions: { signal }, queryDeduplication: false } : undefined,
+  });
+  const download = data.publishedMaterialAttachmentDownload;
+  if (!download) return null;
+  const href = mediaStorageURL(download.url, mediaStorageOrigins);
+  const expiresAt = Date.parse(download.expiresAt);
+  return href && expiresAt > Date.now() ? { href, expiresAt } : null;
+}
 
 export function materialsHref(topic?: string | null, cursor?: string | null, drafts = false) {
   const params = new URLSearchParams();
