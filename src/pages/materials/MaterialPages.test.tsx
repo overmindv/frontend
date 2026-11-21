@@ -248,3 +248,63 @@ describe("material photo viewer", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
+
+describe("inline photo groups", () => {
+  const photoA = { fileId, kind: "image" as const, title: "Первый.png", position: 0 };
+  const photoB = { fileId: "00000000-0000-4000-8000-000000000210", kind: "image" as const, title: "Второй.jpg", position: 1 };
+  const pdf = { fileId: "00000000-0000-4000-8000-000000000211", kind: "pdf" as const, title: "Файл.pdf", position: 2 };
+
+  function article(source: string) {
+    return published({ ...material, learning: null, revision: { id: publication, number: 2, format: "markdown", source },
+      attachments: [photoA, photoB, pdf] });
+  }
+
+  function group(...ids: string[]) {
+    return "```ovm-photos\n" + ids.join("\n") + "\n```";
+  }
+
+  it("renders the group in place and requests only the current frame in source order", async () => {
+    const initial = download("http://localhost:9000/photos/two.webp?sig=fixture", undefined, photoB.fileId);
+    const next = download("http://localhost:9000/photos/one.webp?sig=fixture", undefined, photoA.fileId);
+    const firstResult = vi.fn(() => initial.result);
+    const nextResult = vi.fn(() => next.result);
+
+    show(`/materials/${id}`, [
+      article("До группы.\n\n" + group(photoB.fileId, photoA.fileId) + "\n\nПосле группы."),
+      { ...initial, result: firstResult },
+      { ...next, result: nextResult },
+    ]);
+    const user = userEvent.setup();
+    const box = await screen.findByRole("figure", { name: "Группа фото" });
+    const view = within(box);
+    expect(screen.getByText("До группы.").compareDocumentPosition(box)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(box.compareDocumentPosition(screen.getByText("После группы."))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(firstResult).not.toHaveBeenCalled();
+    expect(nextResult).not.toHaveBeenCalled();
+    await user.click(view.getByRole("button", { name: "Показать фото" }));
+    const frame = await view.findByRole("img", { name: "Второй.jpg" });
+    fireEvent.load(frame);
+    expect(firstResult).toHaveBeenCalledOnce();
+    expect(nextResult).not.toHaveBeenCalled();
+    expect(view.getByText("1 / 2")).toBeInTheDocument();
+
+    fireEvent.touchStart(frame, { touches: [{ clientX: 178, clientY: 60 }] });
+    fireEvent.touchEnd(frame, { changedTouches: [{ clientX: 48, clientY: 63 }] });
+    expect(await view.findByRole("img", { name: "Первый.png" })).toBeInTheDocument();
+    expect(view.getByText("2 / 2")).toBeInTheDocument();
+    expect(nextResult).toHaveBeenCalledOnce();
+    expect(view.getByRole("button", { name: "Следующий кадр" })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("does not resolve external URLs, non-photo attachments or IDs outside the publication", async () => {
+    const unknown = "00000000-0000-4000-8000-000000000212";
+    const example = "````markdown\n" + group(unknown) + "\n````";
+    const sources = [group(pdf.fileId), group(unknown), group("https://external.invalid/image.jpg"), example];
+    show(`/materials/${id}`, [article(sources.join("\n\n"))]);
+    const materialBody = await screen.findByRole("article");
+    expect(within(materialBody).getAllByText("Группа фото недоступна")).toHaveLength(3);
+    expect(within(materialBody).queryByRole("figure")).not.toBeInTheDocument();
+    expect(within(materialBody).queryByRole("img")).not.toBeInTheDocument();
+    expect(materialBody.querySelector("pre")).toHaveTextContent(unknown);
+  });
+});

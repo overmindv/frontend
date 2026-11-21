@@ -1,0 +1,49 @@
+.material-inline-photos {
+  margin: 16px 0 22px;
+}
+
+.material-inline-photo-stage {
+  aspect-ratio: 16 / 10;
+  max-height: 420px;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  touch-action: pan-y pinch-zoom;
+}
+
+.material-inline-photo-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 44px;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+}
+
+.material-inline-photo-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.material-inline-photo-pages {
+  display: grid;
+  grid-template-columns: 44px 50px 44px;
+  align-items: center;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.material-inline-photo-controls .button {
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+.material-inline-photo-controls [aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}

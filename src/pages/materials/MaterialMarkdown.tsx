@@ -1,9 +1,27 @@
-import Markdown, { defaultUrlTransform, type Components } from "react-markdown";
+import { createContext, useContext, type ComponentProps, type ReactNode } from "react";
+import Markdown, { defaultUrlTransform, type Components, type ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Link } from "react-router-dom";
 import { materialMarkdownLink } from "./materialLinks";
+import { isPhotoFence, parsePhotoGroup } from "./materialPhotoSyntax";
+
+type RenderPhotos = (ids: string[]) => ReactNode;
+const PhotoBlocks = createContext<{ source: string; photos?: RenderPhotos }>({ source: "" });
+
+function MaterialCodeBlock({ node, children }: ComponentProps<"pre"> & ExtraProps) {
+  const { source, photos } = useContext(PhotoBlocks);
+  const code = node?.children[0];
+  if (code?.type === "element" && code.tagName === "code" && isPhotoFence(source, node?.position?.start.offset)) {
+    const body = code.children.map((part) => part.type === "text" ? part.value : "").join("");
+    const ids = parsePhotoGroup(body);
+    if (!ids) return <p>Группа фото недоступна</p>;
+    return photos ? photos(ids) : <p>Фото: {ids.length}</p>;
+  }
+  return <pre>{children}</pre>;
+}
 
 const components: Components = {
+  pre: MaterialCodeBlock,
   h1({ children }) {
     return <h2>{children}</h2>;
   },
@@ -15,11 +33,13 @@ const components: Components = {
   },
 };
 
-export function MaterialMarkdown({ source }: { source: string }) {
-  return <div className="material-markdown">
-    <Markdown skipHtml disallowedElements={["img"]} remarkPlugins={[remarkGfm]} components={components}
-      urlTransform={(value, key) => key === "href" ? materialMarkdownLink(defaultUrlTransform(value)) : undefined}>
-      {source}
-    </Markdown>
-  </div>;
+export function MaterialMarkdown({ source, photos }: { source: string; photos?: RenderPhotos }) {
+  return <PhotoBlocks.Provider value={{ source, photos }}>
+    <div className="material-markdown">
+      <Markdown skipHtml disallowedElements={["img"]} remarkPlugins={[remarkGfm]} components={components}
+        urlTransform={(value, key) => key === "href" ? materialMarkdownLink(defaultUrlTransform(value)) : undefined}>
+        {source}
+      </Markdown>
+    </div>
+  </PhotoBlocks.Provider>;
 }

@@ -6,6 +6,7 @@ import { ErrorMessage } from "../../components/common/ErrorMessage";
 import { Spinner } from "../../components/common/Spinner";
 import { useAuth } from "../../context/AuthContext";
 import { MaterialAttachments } from "./MaterialAttachments";
+import { MaterialInlinePhotos } from "./MaterialInlinePhotos";
 import { MaterialMarkdown } from "./MaterialMarkdown";
 import { MaterialHistory, MaterialRelatedTasks } from "./MaterialReadSections";
 import "./materials.css";
@@ -47,6 +48,8 @@ function MaterialReadContent({ id, back }: { id: string; back: string }) {
 
   const isOwner = userId !== null && userId === material.authorId;
   const showAside = topicIds.length > 0 || isOwner;
+  const publication = { materialId: material.id, revisionId: revision.id };
+  const photosByID = new Map(material.attachments.filter(({ kind }) => kind === "image").map((file) => [file.fileId, file]));
   return <main className="page-shell material-reader">
     {backLink}
     <header className="page-heading material-reader-heading">
@@ -71,8 +74,13 @@ function MaterialReadContent({ id, back }: { id: string; back: string }) {
     </header>
     <div className={showAside ? "material-reader-layout with-aside" : "material-reader-layout"}>
       <article className="material-article">
-        <MaterialMarkdown source={revision.source} />
-        <MaterialAttachments files={material.attachments} publication={{ materialId: material.id, revisionId: revision.id }} key={revision.id} />
+        <MaterialMarkdown source={revision.source} key={`text-${revision.id}`} photos={(ids) => {
+          const files = ids.flatMap((fileId) => photosByID.get(fileId) ?? []);
+          return files.length === ids.length
+            ? <MaterialInlinePhotos files={files} publication={publication} />
+            : <p>Группа фото недоступна</p>;
+        }} />
+        <MaterialAttachments files={material.attachments} publication={publication} key={revision.id} />
       </article>
       {showAside && <aside className="material-aside">
         {topicIds[0] && <MaterialRelatedTasks topicId={topicIds[0]} />}
