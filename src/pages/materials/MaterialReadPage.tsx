@@ -1,5 +1,5 @@
 import { useQuery } from "@apollo/client";
-import { ArrowLeft, Clock3, GitCommitHorizontal } from "lucide-react";
+import { ArrowLeft, Clock3, GitCommitHorizontal, GitPullRequest } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { MATERIAL_TOPICS_QUERY, PUBLISHED_MATERIAL_QUERY, isMaterialID, materialDate, materialsHref, type PublishedMaterial } from "../../api/materials";
 import { ErrorMessage } from "../../components/common/ErrorMessage";
@@ -65,6 +65,9 @@ function MaterialReadContent({ id, back }: { id: string; back: string }) {
           </Link>)}
         </div>}
       </div>
+      <Link className="button button--ghost" to={`/materials/${id}/changes/new`}>
+        <GitPullRequest size={16} aria-hidden="true" /> Предложить правку
+      </Link>
     </header>
     <div className={showAside ? "material-reader-layout with-aside" : "material-reader-layout"}>
       <article className="material-article">

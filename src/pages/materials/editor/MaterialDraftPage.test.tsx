@@ -81,6 +81,7 @@ describe("material draft editor", () => {
     await user.type(screen.getByLabelText("Текст Markdown"), "# Заголовок{Enter}");
     expect(matchInput).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Предпросмотр" }));
+    await vi.dynamicImportSettled();
     expect(await screen.findByRole("heading", { name: "Заголовок", level: 2 })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Сохранить" }));
     expect(await screen.findByRole("heading", { name: "Редактор черновика" })).toBeInTheDocument();

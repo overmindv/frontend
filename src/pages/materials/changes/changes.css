@@ -1,0 +1,145 @@
+.material-change-page {
+  max-width: 1060px;
+}
+
+.change-heading {
+  align-items: flex-start;
+  margin: 14px 0 18px;
+  overflow-wrap: anywhere;
+}
+
+.change-heading .material-meta {
+  margin-top: 12px;
+}
+
+.change-actions,
+.change-confirm,
+.change-tabs,
+.change-comparison,
+.change-pagination {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.change-actions > span,
+.change-diff > p,
+.change-history time {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.change-form .editor-label {
+  margin: 16px 0;
+}
+
+.change-confirm {
+  border-bottom: 1px solid var(--border);
+  padding: 0 0 14px;
+}
+
+.change-confirm > p {
+  color: var(--danger);
+  width: 100%;
+}
+
+.change-tabs {
+  border-bottom: 1px solid var(--border);
+  margin: 12px 0;
+  padding: 0 0 8px;
+}
+
+.change-tabs button[aria-pressed="true"] {
+  background: var(--input);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.change-comparison {
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.change-comparison h2 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.change-patch {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: 590px;
+  overflow: auto;
+}
+
+.change-line {
+  display: block;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  padding-inline: 9px;
+  tab-size: 4;
+  white-space: pre-wrap;
+}
+
+.change-line--addition {
+  background: var(--success-soft);
+}
+
+.change-line--deletion {
+  background: var(--danger-soft);
+}
+
+.change-line--header {
+  background: var(--input);
+  color: var(--text-secondary);
+}
+
+.change-pagination {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+.change-history {
+  list-style: none;
+  padding: 0;
+}
+
+.change-history li {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  gap: 8px 14px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  min-height: 58px;
+  overflow-wrap: anywhere;
+  padding: 8px 0;
+}
+
+.change-history p {
+  margin: 2px 0;
+}
+
+.change-empty {
+  color: var(--text-secondary);
+  padding: 14px 0;
+}
+
+@media (max-width: 550px) {
+  .change-history li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .change-history time {
+    grid-column: 1;
+  }
+
+  .change-history button {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+}
