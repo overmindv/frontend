@@ -7,7 +7,7 @@ import "./materialPhotoViewer.css";
 
 type PhotoState = { status: "requesting" | "failed" } | { status: "loading" | "ready"; href: string };
 
-function PhotoSlide({ fileId, title, publication, onRetry }: {
+export function MaterialPhotoFrame({ fileId, title, publication, onRetry }: {
   fileId: string; title: string; publication: MaterialPublication; onRetry: () => void;
 }) {
   const client = useApolloClient();
@@ -100,7 +100,7 @@ export function MaterialPhotoViewer({ file, publication, index, count, onSelect,
       </button>
     </header>
     <div className="material-photo-stage" onClick={closeOnEmpty}>
-      <PhotoSlide key={file.fileId} fileId={file.fileId} title={title} publication={publication}
+      <MaterialPhotoFrame key={file.fileId} fileId={file.fileId} title={title} publication={publication}
         onRetry={() => closeButton.current?.focus()} />
     </div>
     <div className="material-photo-footer" onClick={closeOnEmpty}>
