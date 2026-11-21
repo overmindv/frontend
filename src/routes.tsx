@@ -46,6 +46,7 @@ export function AppRoutes() {
       <Route path="/materials/new" element={<PrivateRoute><Suspense fallback={<Spinner label="Открываем редактор" />}><MaterialDraftPage /></Suspense></PrivateRoute>} />
       <Route path="/materials/:id/changes/new" element={<PrivateRoute><Suspense fallback={<Spinner label="Открываем редактор" />}><MaterialChangeFormPage /></Suspense></PrivateRoute>} />
       <Route path="/materials/changes/:changeId/edit" element={<PrivateRoute><Suspense fallback={<Spinner label="Открываем редактор" />}><MaterialChangeFormPage /></Suspense></PrivateRoute>} />
+      <Route path="/materials/changes/:changeId/rebase" element={<PrivateRoute><Suspense fallback={<Spinner label="Открываем редактор" />}><MaterialChangeFormPage rebase /></Suspense></PrivateRoute>} />
       <Route path="/materials/changes/:changeId" element={<PrivateRoute><Suspense fallback={<Spinner label="Открываем предложение" />}><MaterialChangePage /></Suspense></PrivateRoute>} />
       <Route path="/materials/:id/edit" element={<PrivateRoute><Suspense fallback={<Spinner label="Открываем редактор" />}><MaterialDraftPage /></Suspense></PrivateRoute>} />
       <Route path="/materials/:id" element={<PrivateRoute><Suspense fallback={<Spinner label="Открываем материал" />}><MaterialReadPage /></Suspense></PrivateRoute>} />
