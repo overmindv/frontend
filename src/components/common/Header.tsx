@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQuery } from "@apollo/client";
-import { Bell, ChevronDown, CircleUserRound, LogIn, Menu, Moon, Settings, Shield, Sun, X } from "lucide-react";
+import { Bell, CircleUserRound, LogIn, Menu, Moon, Settings, Sun, X } from "lucide-react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { SEARCH_QUERY, SEARCH_KINDS, kindDescription, kindHref, kindTitle, totalResults, type SearchResults, type Searchable } from "../../api/search";
 
 const primaryLinks = [
-  ["/", "Главная"],
   ["/tasks", "Задачи"],
   ["/materials", "Материалы"],
   ["/practice", "Практика"],
@@ -30,7 +29,6 @@ export function Header() {
   const { isAuthenticated, isAdmin, logout } = useAuth();
   const { preference, resolvedTheme, cycleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -42,7 +40,6 @@ export function Header() {
   // logout и повторный вход в другой аккаунт).
   useEffect(() => {
     setMobileOpen(false);
-    setAdminOpen(false);
     setProfileOpen(false);
     setQuery("");
     setDebouncedQuery("");
@@ -87,33 +84,29 @@ export function Header() {
 
         <nav className="sidebar-nav" aria-label="Основная навигация">
           {primaryLinks.map(([to, label]) => (
-            <NavLink key={to} to={to} end={to === "/"} onClick={closeMobile}>{label}</NavLink>
+            <NavLink key={to} to={to} onClick={closeMobile}>{label}</NavLink>
           ))}
           {isAuthenticated && <NavLink to="/history" onClick={closeMobile}>История решений</NavLink>}
         </nav>
 
-        <nav className="sidebar-nav sidebar-nav--secondary" aria-label="Каталог">
-          <span className="sidebar-nav__label">Каталог</span>
+        <details className="sidebar-section" key={`catalog-${location.pathname}`} open={catalogLinks.some(([path]) => location.pathname.startsWith(path)) || undefined}>
+          <summary>Каталог</summary>
+          <nav className="sidebar-nav" aria-label="Каталог">
           {catalogLinks.map(([to, label]) => <NavLink key={to} to={to} onClick={closeMobile}>{label}</NavLink>)}
-        </nav>
-
-        {isAuthenticated && (
-          <nav className="sidebar-nav sidebar-nav--secondary" aria-label="Личное">
-            <span className="sidebar-nav__label">Личное</span>
-            <NavLink to="/profile" onClick={closeMobile}>Профиль</NavLink>
-            <NavLink to="/leaderboard" onClick={closeMobile}>Рейтинг</NavLink>
           </nav>
-        )}
+        </details>
 
         {isAdmin && (
-          <nav className="sidebar-nav sidebar-nav--secondary" aria-label="Администрирование">
-            <span className="sidebar-nav__label">Администрирование</span>
+          <details className="sidebar-section" key={`admin-${location.pathname}`} open={location.pathname.startsWith("/admin") || undefined}>
+            <summary>Администрирование</summary>
+            <nav className="sidebar-nav" aria-label="Администрирование">
             <Link to="/admin/catalog/universities" onClick={closeMobile}>Каталог</Link>
             <Link to="/admin/tasks/new" onClick={closeMobile}>Создать задачу</Link>
             <Link to="/admin/collected-tasks" onClick={closeMobile}>Сбор и проверка</Link>
             <Link to="/admin/users" onClick={closeMobile}>Пользователи</Link>
             <Link to="/notifications" onClick={closeMobile}>Уведомления</Link>
-          </nav>
+            </nav>
+          </details>
         )}
 
         <div className="sidebar__footer">
@@ -162,14 +155,6 @@ export function Header() {
         <button className="header-icon" onClick={cycleTheme} title={`Тема: ${preference}`} type="button" aria-label="Переключить тему">
           {resolvedTheme === "dark" ? <Moon size={17} /> : <Sun size={17} />}
         </button>
-        {isAdmin && (
-          <div className="header-menu header-admin-control">
-            <button className="header-action" onClick={() => setAdminOpen((value) => !value)} type="button">
-              <Shield size={16} /> <span className="action-label">Админ</span> <ChevronDown className="chevron" size={13} />
-            </button>
-            {adminOpen && <AdminMenu close={() => setAdminOpen(false)} />}
-          </div>
-        )}
         {isAuthenticated ? (
           <div className="header-menu">
             <button className="header-icon" onClick={() => setProfileOpen((value) => !value)} aria-label="Меню профиля" type="button">
@@ -178,6 +163,7 @@ export function Header() {
             {profileOpen && (
               <div className="popover-menu popover-menu--right">
                 <Link onClick={() => setProfileOpen(false)} to="/profile"><CircleUserRound size={15} /> Профиль</Link>
+                <Link onClick={() => setProfileOpen(false)} to="/leaderboard">Рейтинг</Link>
                 <Link onClick={() => setProfileOpen(false)} to="/profile/settings"><Settings size={15} /> Настройки</Link>
                 <button onClick={logout} type="button"><LogIn size={15} /> Выйти</button>
               </div>
@@ -189,14 +175,4 @@ export function Header() {
       </div>
     </header>
   </>;
-}
-
-// AdminMenu группирует административные переходы отдельно от пользовательской навигации.
-function AdminMenu({ close }: { close: () => void }) {
-  return <div className="popover-menu popover-menu--right">
-    <Link onClick={close} to="/admin/tasks/new">Создать задачу</Link>
-    <Link onClick={close} to="/admin/collected-tasks">Сбор и проверка</Link>
-    <Link onClick={close} to="/admin/catalog/universities">Управление каталогом</Link>
-    <Link onClick={close} to="/admin/users">Пользователи</Link>
-  </div>;
 }
