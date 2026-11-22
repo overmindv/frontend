@@ -11,6 +11,8 @@ test("главная предлагает практику и обычный с�
   expect(await screen.findByText("Два указателя")).toBeInTheDocument();
   expect(screen.queryByText("Лента готовится")).not.toBeInTheDocument();
   expect(screen.queryByText("Задачи для вас")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Читать материалы" })).toHaveAttribute("href", "/materials");
+  expect(screen.getByRole("link", { name: "Решать задачи" })).toHaveAttribute("href", "/tasks");
   expect(screen.getByRole("link", { name: "Практика по темам" })).toHaveAttribute("href", "/practice");
   expect(screen.getByRole("link", { name: /Университеты/ })).toHaveAttribute("href", "/universities");
 });

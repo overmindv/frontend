@@ -27,13 +27,18 @@ export function HomePage() {
   const feedItems = feedQuery.data?.feed.items ?? [];
 
   return <main className="page-shell home-page">
-    <header className="page-heading">
-      <div><h1>Практика</h1><p>Выберите тему для тренировки или откройте задачу из списка.</p></div>
-      <Link className="button button--primary" to="/practice">Практика по темам</Link>
+    <header className="learning-intro">
+      <h1>Практика и материалы</h1>
+      <p>Решайте задачи или разберите новую тему.</p>
+      <div className="learning-intro__actions">
+        <Link className="button button--primary" to="/tasks">Решать задачи <ArrowRight size={16} aria-hidden="true" /></Link>
+        <Link className="button button--ghost" to="/materials">Читать материалы</Link>
+      </div>
+      <Link className="text-link learning-intro__plan" to="/practice">Практика по темам</Link>
     </header>
 
     <section className="home-tasks" aria-labelledby="home-tasks-title">
-      <div className="section-title"><h2 id="home-tasks-title">Задачи</h2><Link className="text-link" to="/tasks">Все задачи →</Link></div>
+      <div className="section-title"><h2 id="home-tasks-title">Начните с задачи</h2><Link className="text-link" to="/tasks">Все задачи →</Link></div>
       {error ? <div className="content-state"><ErrorMessage message={getErrorMessage(error)} /><button className="button button--ghost" type="button" onClick={() => void refetch().catch(() => undefined)}>Повторить</button></div>
         : loading && !data ? <div className="content-state"><Spinner label="Загружаем задачи…" /></div>
         : tasks.length === 0 ? <div className="content-state"><BookOpen size={22} /><strong>Задач пока нет</strong><p>Опубликованные задачи появятся здесь.</p></div>
@@ -45,7 +50,7 @@ export function HomePage() {
           ))}</div>}
     </section>
 
-    <nav className="home-catalog" aria-label="Каталог"><span>Каталог</span>{catalogLinks.map(({ to, label }) => <Link className="text-link" key={to} to={to}>{label}</Link>)}</nav>
+    <details className="home-catalog-disclosure"><summary>Учебный каталог</summary><nav className="home-catalog" aria-label="Каталог">{catalogLinks.map(({ to, label }) => <Link className="text-link" key={to} to={to}>{label}</Link>)}</nav></details>
 
     {(feedItems.length > 0 || feedQuery.error) && <section className="activity-feed" aria-label="Новости">
       <div className="section-title"><h2>Новости</h2></div>

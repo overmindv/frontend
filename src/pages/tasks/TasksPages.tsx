@@ -66,7 +66,7 @@ export function TasksPage() {
 
   return (
     <main className="page-shell tasks-page">
-      <header className="page-heading"><div><h1>Задачи</h1><p>Выберите задачу и отправьте решение</p></div></header>
+      <header className="page-heading"><div><h1>Задачи</h1><p>Практикуйтесь в своём темпе.</p></div></header>
       <form className="task-search" role="search" onSubmit={(event) => { event.preventDefault(); setSubmittedSearch(search.trim()); setOffset(0); }}>
         <Search size={19} aria-hidden="true" /><input aria-label="Поиск задач" onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по названию" value={search} /><button className="button button--primary" type="submit">Найти</button>
       </form>
