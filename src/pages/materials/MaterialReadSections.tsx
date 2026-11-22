@@ -3,7 +3,7 @@ import { ArrowRight, History } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MATERIAL_HISTORY_QUERY, isMaterialID, materialDate, type MaterialHistoryResult } from "../../api/materials";
-import { IT_TASKS_QUERY, type ITTaskList } from "../../api/tasks";
+import { IT_TASKS_QUERY } from "../../api/tasks";
 import { Spinner } from "../../components/common/Spinner";
 
 export function MaterialHistory({ id }: { id: string }) {
@@ -37,7 +37,7 @@ export function MaterialHistory({ id }: { id: string }) {
 }
 
 export function MaterialRelatedTasks({ topicId }: { topicId: string }) {
-  const { data, error, loading } = useQuery<{ itTasks: ITTaskList }>(IT_TASKS_QUERY, {
+  const { data, error, loading } = useQuery(IT_TASKS_QUERY, {
     variables: { filter: { topicId }, pagination: { limit: 5, offset: 0 } },
   });
   const items = data?.itTasks.items.filter((task) => isMaterialID(task.id)) ?? [];

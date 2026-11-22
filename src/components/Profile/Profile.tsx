@@ -9,14 +9,6 @@ import { useAuth } from "../../context/AuthContext";
 import { ErrorMessage } from "../common/ErrorMessage";
 import { Spinner } from "../common/Spinner";
 
-interface GetUserData {
-  getUser: User;
-}
-
-interface UpdateUserData {
-  updateUser: User;
-}
-
 interface ProfileForm {
   username: string;
   firstName: string;
@@ -48,18 +40,12 @@ export function Profile() {
   const [form, setForm] = useState<ProfileForm>(emptyForm);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const { data, loading, error, refetch: refetchUser } = useQuery<
-    GetUserData,
-    { id: string }
-  >(GET_USER_QUERY, {
+  const { data, loading, error, refetch: refetchUser } = useQuery(GET_USER_QUERY, {
     variables: { id: userId ?? "" },
     skip: !userId,
     fetchPolicy: "cache-and-network",
   });
-  const [updateUser, { loading: saving }] = useMutation<
-    UpdateUserData,
-    { id: string; input: UpdateUserInput }
-  >(UPDATE_USER_MUTATION);
+  const [updateUser, { loading: saving }] = useMutation(UPDATE_USER_MUTATION);
 
   const user = data?.getUser;
 

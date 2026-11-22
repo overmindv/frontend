@@ -2,7 +2,7 @@ import { MockedProvider, type MockedResponse } from "@apollo/client/testing";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { ACKNOWLEDGE_COLLECTION_JOB, COLLECTION_JOBS_QUERY } from "../api/collection";
+import { ACKNOWLEDGE_COLLECTION_JOB, COLLECTION_JOBS_QUERY, type TaskCollectionJob } from "../api/collection";
 import { ME_QUERY } from "../api/queries";
 import { AuthProvider } from "../context/AuthContext";
 import { CollectionNotifications } from "./CollectionNotifications";
@@ -25,7 +25,7 @@ const job = {
   notificationAcknowledged: false,
   createdAt: "2026-09-12T00:00:00Z",
   finishedAt: null,
-};
+} satisfies TaskCollectionJob & { __typename: "TaskCollectionJob" };
 
 const meMock: MockedResponse = {
   request: { query: ME_QUERY },

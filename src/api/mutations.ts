@@ -1,4 +1,5 @@
-import { gql } from "@apollo/client";
+import { gql, type TypedDocumentNode } from "@apollo/client";
+import type * as Schema from "./generated";
 
 export const USER_FIELDS = gql`
   fragment UserFields on User {
@@ -22,7 +23,7 @@ export const USER_FIELDS = gql`
   }
 `;
 
-export const REGISTER_MUTATION = gql`
+export const REGISTER_MUTATION: TypedDocumentNode<Schema.RegisterMutation, Schema.RegisterMutationVariables> = gql`
   mutation Register($input: RegisterInput!) {
     register(input: $input) {
       token
@@ -35,7 +36,7 @@ export const REGISTER_MUTATION = gql`
   ${USER_FIELDS}
 `;
 
-export const LOGIN_MUTATION = gql`
+export const LOGIN_MUTATION: TypedDocumentNode<Schema.LoginMutation, Schema.LoginMutationVariables> = gql`
   mutation Login($input: LoginInput!) {
     login(input: $input) {
       token
@@ -48,7 +49,7 @@ export const LOGIN_MUTATION = gql`
   ${USER_FIELDS}
 `;
 
-export const UPDATE_USER_MUTATION = gql`
+export const UPDATE_USER_MUTATION: TypedDocumentNode<Schema.UpdateUserMutation, Schema.UpdateUserMutationVariables> = gql`
   mutation UpdateUser($id: ID!, $input: UpdateUserInput!) {
     updateUser(id: $id, input: $input) {
       ...UserFields
@@ -57,13 +58,13 @@ export const UPDATE_USER_MUTATION = gql`
   ${USER_FIELDS}
 `;
 
-export const LOGOUT_MUTATION = gql`
+export const LOGOUT_MUTATION: TypedDocumentNode<Schema.LogoutMutation, Schema.LogoutMutationVariables> = gql`
   mutation Logout {
     logout
   }
 `;
 
-export const CREATE_MEDIA_UPLOAD_MUTATION = gql`
+export const CREATE_MEDIA_UPLOAD_MUTATION: TypedDocumentNode<Schema.CreateMediaUploadMutation, Schema.CreateMediaUploadMutationVariables> = gql`
   mutation CreateMediaUpload($input: CreateMediaUploadInput!) {
     createMediaUpload(input: $input) {
       fileId
@@ -84,7 +85,7 @@ export const CREATE_MEDIA_UPLOAD_MUTATION = gql`
   }
 `;
 
-export const COMPLETE_MEDIA_UPLOAD_MUTATION = gql`
+export const COMPLETE_MEDIA_UPLOAD_MUTATION: TypedDocumentNode<Schema.CompleteMediaUploadMutation, Schema.CompleteMediaUploadMutationVariables> = gql`
   mutation CompleteMediaUpload($input: CompleteMediaUploadInput!) {
     completeMediaUpload(input: $input) {
       id
@@ -93,7 +94,7 @@ export const COMPLETE_MEDIA_UPLOAD_MUTATION = gql`
   }
 `;
 
-export const SET_MY_AVATAR_MUTATION = gql`
+export const SET_MY_AVATAR_MUTATION: TypedDocumentNode<Schema.SetMyAvatarMutation, Schema.SetMyAvatarMutationVariables> = gql`
   mutation SetMyAvatar($fileId: ID) {
     setMyAvatar(fileId: $fileId) {
       ...UserFields

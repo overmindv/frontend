@@ -3,8 +3,7 @@ import { ArrowRight, Code2, Settings, UserRound } from "lucide-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { GET_USER_QUERY, PUBLIC_USER_QUERY } from "../api/queries";
-import { MY_IT_CODE_SUBMISSIONS_QUERY, MY_IT_SUBMISSIONS_QUERY, type ITCodeSubmission, type ITSubmission } from "../api/tasks";
-import type { PublicUser, User } from "../api/types";
+import { MY_IT_CODE_SUBMISSIONS_QUERY, MY_IT_SUBMISSIONS_QUERY } from "../api/tasks";
 import { Profile } from "../components/Profile/Profile";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 import { Spinner } from "../components/common/Spinner";
@@ -38,10 +37,10 @@ function UserProfile({ userID, own }: { userID: string; own: boolean }) {
   const [setProgressPublic, visibilityState] = useMutation<{ setMyPracticeStatsPublic: boolean }>(SET_PROGRESS_PUBLIC_MUTATION);
   // Свой профиль — полный запрос getUser; чужой — только публичный userProfile
   // (getUser отдаёт email/phone только владельцу/админу — IDOR-защита на gateway).
-  const mine = useQuery<{ getUser: User }>(GET_USER_QUERY, { variables: { id: userID }, skip: !userID || !own });
-  const foreign = useQuery<{ userProfile: PublicUser }>(PUBLIC_USER_QUERY, { variables: { id: userID }, skip: !userID || own });
-  const answers = useQuery<{ myITSubmissions: { items: ITSubmission[] } }>(MY_IT_SUBMISSIONS_QUERY, { variables: { taskId: null, pagination: { limit: 20, offset: 0 } }, skip: !own });
-  const code = useQuery<{ myITCodeSubmissions: { items: ITCodeSubmission[] } }>(MY_IT_CODE_SUBMISSIONS_QUERY, { variables: { taskId: null, pagination: { limit: 20, offset: 0 } }, skip: !own });
+  const mine = useQuery(GET_USER_QUERY, { variables: { id: userID }, skip: !userID || !own });
+  const foreign = useQuery(PUBLIC_USER_QUERY, { variables: { id: userID }, skip: !userID || own });
+  const answers = useQuery(MY_IT_SUBMISSIONS_QUERY, { variables: { taskId: null, pagination: { limit: 20, offset: 0 } }, skip: !own });
+  const code = useQuery(MY_IT_CODE_SUBMISSIONS_QUERY, { variables: { taskId: null, pagination: { limit: 20, offset: 0 } }, skip: !own });
   const mineProgress = useQuery<{ myPracticeProgress: PracticeProgress }>(MY_PROGRESS_QUERY, { skip: !own, fetchPolicy: "network-only" });
   const peerProgress = useQuery<{ practiceProgress: PracticeProgress | null }>(USER_PROGRESS_QUERY, { variables: { userId: userID }, skip: own || !userID, fetchPolicy: "network-only" });
   const user = own ? mine : foreign;

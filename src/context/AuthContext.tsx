@@ -14,12 +14,9 @@ import { apolloClient, setUnauthenticatedHandler } from "../api/client";
 import { LOGOUT_MUTATION } from "../api/mutations";
 import { ME_QUERY } from "../api/queries";
 import type { AuthPayload } from "../api/types";
+import type { MeQuery } from "../api/generated";
 
-interface AuthUser {
-  id: string;
-  isAdmin: boolean;
-  isSuperuser: boolean;
-}
+type AuthUser = MeQuery["me"];
 
 interface AuthContextValue {
   userId: string | null;
@@ -32,15 +29,11 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-interface MeData {
-  me: AuthUser | null;
-}
-
 export function AuthProvider({ children }: PropsWithChildren) {
   const navigate = useNavigate();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [sessionRestored, setSessionRestored] = useState(false);
-  const { data: meData, loading: meLoading } = useQuery<MeData>(ME_QUERY, {
+  const { data: meData, loading: meLoading } = useQuery(ME_QUERY, {
     fetchPolicy: "network-only",
     context: { optionalSession: true },
   });

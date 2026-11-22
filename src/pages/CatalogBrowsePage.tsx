@@ -3,6 +3,7 @@ import { ArrowRight, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { COURSE_QUERY, COURSES_QUERY, PROGRAM_QUERY, PROGRAMS_QUERY, TOPIC_QUERY, TOPICS_QUERY, UNIVERSITY_QUERY, UNIVERSITIES_QUERY, type Course, type Program, type Topic, type University } from "../api/catalog";
+import type * as Schema from "../api/generated";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 import { materialsHref } from "../api/materials";
 import { Spinner } from "../components/common/Spinner";
@@ -17,6 +18,8 @@ const config = {
 } as const;
 
 type CatalogItem = University | Program | Course | Topic;
+type CatalogBrowseResult = Partial<Schema.UniversitiesQuery & Schema.ProgramsQuery & Schema.CoursesQuery & Schema.TopicsQuery>;
+type CatalogDetailResult = Partial<Schema.UniversityQuery & Schema.ProgramQuery & Schema.CourseQuery & Schema.TopicQuery>;
 
 // CatalogBrowsePage показывает публичный список сущностей с серверным поиском по названию.
 export function CatalogBrowsePage({ kind }: { kind: CatalogKind }) {
@@ -33,7 +36,7 @@ export function CatalogBrowsePage({ kind }: { kind: CatalogKind }) {
 
   const parentId = kind === "universities" ? null : searchParams.get("parentId");
   const variables = kind === "universities" ? { search: debouncedSearch } : { parentId, search: debouncedSearch };
-  const { data, loading, error } = useQuery<Record<string, CatalogItem[]>>(page.query, { variables });
+  const { data, loading, error } = useQuery<CatalogBrowseResult, Schema.TopicsQueryVariables>(page.query, { variables });
   const items = data?.[page.key] ?? [];
 
   return <main className="page-shell public-catalog"><header className="page-heading"><div><span className="section-kicker">Каталог</span><h1>{page.title}</h1><p>{page.description}</p></div></header>{parentId && <nav className="catalog-scope" aria-label="Раздел каталога"><Link className="back-link" to={`/${parentKinds[kind]}/${encodeURIComponent(parentId)}`}>← {parentLabels[kind]}</Link><Link className="back-link" to={`/${kind}`}>Все {page.title.toLocaleLowerCase("ru")}</Link></nav>}<label className="catalog-search"><Search size={16} /><input aria-label={`Поиск: ${page.title}`} onChange={(event) => setSearch(event.target.value)} placeholder={`Найти в разделе «${page.title.toLocaleLowerCase("ru")}»`} value={search} /></label>{error && <ErrorMessage message={error.message} />}{loading && !data ? <div className="content-state"><Spinner label="Загружаем каталог…" /></div> : items.length === 0 ? <div className="content-state"><strong>{search ? "Совпадений нет" : "Раздел пока пуст"}</strong><p>{search ? "Попробуйте изменить запрос." : "Активные элементы появятся после публикации."}</p></div> : <section className="catalog-card-grid">{items.map((item) => <Link className="catalog-card" key={item.id} to={`/${kind}/${item.id}`}><div><strong>{itemTitle(item)}</strong><p>{itemDescription(item)}</p></div><ArrowRight size={16} /></Link>)}</section>}<p className="local-search-note">{parentId ? "Поиск внутри выбранного раздела." : "Поиск выполняется по всему каталогу, а не только по этой странице."}</p></main>;
@@ -50,7 +53,7 @@ const detailConfig = {
 export function CatalogDetailPage({ kind }: { kind: CatalogKind }) {
   const { id = "" } = useParams();
   const page = detailConfig[kind];
-  const { data, loading, error } = useQuery<Record<string, CatalogItem>>(page.query, { variables: { id } });
+  const { data, loading, error } = useQuery<CatalogDetailResult, Schema.TopicQueryVariables>(page.query, { variables: { id } });
   const item = data?.[page.key];
 
   if (loading && !item) return <main className="page-shell content-state"><Spinner label="Открываем элемент каталога…" /></main>;
@@ -69,7 +72,7 @@ const childKinds = { universities: "programs", programs: "courses", courses: "to
 function CatalogRelations({ kind, item }: { kind: CatalogKind; item: CatalogItem }) {
   const parentId = "universityId" in item ? item.universityId : "programId" in item ? item.programId : "courseId" in item ? item.courseId : null;
   const parent = detailConfig[parentKinds[kind]];
-  const { data } = useQuery<Record<string, CatalogItem>>(parent.query, { variables: { id: parentId ?? "" }, skip: !parentId });
+  const { data } = useQuery<CatalogDetailResult, Schema.TopicQueryVariables>(parent.query, { variables: { id: parentId ?? "" }, skip: !parentId });
   const parentItem = data?.[parent.key];
   const child = kind === "topics" ? null : childKinds[kind];
   return <nav aria-label="Связи каталога" className="catalog-relations">

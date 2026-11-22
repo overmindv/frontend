@@ -1,7 +1,6 @@
 import { useMutation, useQuery } from "@apollo/client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import type { Topic } from "../../api/catalog";
 import { getErrorMessage } from "../../api/errors";
 import {
   ADMIN_IT_TASK_QUERY,
@@ -12,7 +11,6 @@ import {
   IT_TASK_TOPICS_QUERY,
   UPDATE_IT_TASK,
   type ITAdminTaskFilter,
-  type ITTask,
   type ITTaskDifficulty,
   type ITTaskInput,
   type ITTaskList,
@@ -52,7 +50,7 @@ export function AdminTasksPage() {
     ...(taskType ? { taskType } : {}),
     ...(difficulty ? { difficulty } : {}),
   };
-  const { data, loading, error, refetch } = useQuery<{ adminITTasks: ITTaskList }>(
+  const { data, loading, error, refetch } = useQuery(
     ADMIN_IT_TASKS_QUERY,
     {
       variables: { filter, pagination: { limit: adminPageSize, offset } },
@@ -117,13 +115,13 @@ export function AdminTaskFormPage({ create = false }: { create?: boolean }) {
   const validationRef = useRef<HTMLDivElement>(null);
   const [form, setForm] = useState<TaskFormState>(() => emptyTaskForm());
   const [validationError, setValidationError] = useState<string | null>(null);
-  const taskQuery = useQuery<{ adminITTask: ITTask }>(ADMIN_IT_TASK_QUERY, {
+  const taskQuery = useQuery(ADMIN_IT_TASK_QUERY, {
     variables: { id },
     skip: create || !isAdmin,
   });
-  const topicsQuery = useQuery<{ topics: Topic[] }>(IT_TASK_TOPICS_QUERY, { skip: !isAdmin });
-  const [createTask, createState] = useMutation<{ createITTask: ITTask }, { input: ITTaskInput }>(CREATE_IT_TASK);
-  const [updateTask, updateState] = useMutation<{ updateITTask: ITTask }, { id: string; input: ITTaskInput }>(UPDATE_IT_TASK);
+  const topicsQuery = useQuery(IT_TASK_TOPICS_QUERY, { skip: !isAdmin });
+  const [createTask, createState] = useMutation(CREATE_IT_TASK);
+  const [updateTask, updateState] = useMutation(UPDATE_IT_TASK);
 
   useEffect(() => {
     const task = taskQuery.data?.adminITTask;

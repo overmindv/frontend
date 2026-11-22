@@ -2,7 +2,6 @@ import { useMutation, useQuery } from "@apollo/client";
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { RotateCcw, Search } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import type { Topic } from "../../api/catalog";
 import { getErrorMessage } from "../../api/errors";
 import {
   IT_CODE_SUBMISSION_QUERY,
@@ -12,13 +11,12 @@ import {
   IT_SUBMISSION_QUERY,
   MY_IT_SUBMISSIONS_QUERY,
   SUBMIT_IT_TASK_ANSWER,
-  type ITCodeSubmission,
   type ITSubmission,
-  type ITSubmissionInput,
   type ITTask,
   type ITTaskDifficulty,
   type ITTaskFilter,
   type ITTaskList,
+  type ITTaskTopic,
   type ITTaskType,
 } from "../../api/tasks";
 import { ErrorMessage } from "../../components/common/ErrorMessage";
@@ -39,14 +37,14 @@ export function TasksPage() {
   const [topicId, setTopicId] = useState("");
   const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
   const [submittedSearch, setSubmittedSearch] = useState(() => searchParams.get("search")?.trim() ?? "");
-  const topics = useQuery<{ topics: Topic[] }>(IT_TASK_TOPICS_QUERY);
+  const topics = useQuery(IT_TASK_TOPICS_QUERY);
   const filter: ITTaskFilter = {
     ...(submittedSearch ? { search: submittedSearch } : {}),
     ...(taskType ? { taskType } : {}),
     ...(difficulty ? { difficulty } : {}),
     ...(topicId ? { topicId } : {}),
   };
-  const { data, loading, error, refetch } = useQuery<{ itTasks: ITTaskList }>(IT_TASKS_QUERY, {
+  const { data, loading, error, refetch } = useQuery(IT_TASKS_QUERY, {
     variables: {
       filter,
       pagination: { limit: pageSize, offset },
@@ -144,13 +142,10 @@ export function TaskSolvePage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [result, setResult] = useState<ITSubmission | null>(null);
   const idempotencyKey = useRef<string | null>(null);
-  const { data, loading, error, refetch } = useQuery<{ itTask: ITTask }>(IT_TASK_QUERY, {
+  const { data, loading, error, refetch } = useQuery(IT_TASK_QUERY, {
     variables: { id },
   });
-  const [submit, submitState] = useMutation<
-    { submitITTaskAnswer: ITSubmission },
-    { taskId: string; input: ITSubmissionInput }
-  >(SUBMIT_IT_TASK_ANSWER);
+  const [submit, submitState] = useMutation(SUBMIT_IT_TASK_ANSWER);
   const task = data?.itTask;
   const { stats: solveStats, recordAnswer, recordCode } = useTaskSolveStatus(id, isAuthenticated, userId);
 
@@ -294,9 +289,7 @@ export function TaskSolvePage() {
 // SubmissionHistoryPage показывает независимые попытки текущего пользователя.
 export function SubmissionHistoryPage() {
   const [offset, setOffset] = useState(0);
-  const { data, loading, error } = useQuery<{
-    myITSubmissions: { items: ITSubmission[]; limit: number; offset: number };
-  }>(MY_IT_SUBMISSIONS_QUERY, {
+  const { data, loading, error } = useQuery(MY_IT_SUBMISSIONS_QUERY, {
     variables: { taskId: null, pagination: { limit: pageSize, offset } },
     fetchPolicy: "cache-and-network",
   });
@@ -342,7 +335,7 @@ export function SubmissionHistoryPage() {
 // SubmissionDetailPage повторно получает сохранённый результат владельца.
 export function SubmissionDetailPage() {
   const { id = "" } = useParams();
-  const { data, loading, error } = useQuery<{ itSubmission: ITSubmission }>(IT_SUBMISSION_QUERY, {
+  const { data, loading, error } = useQuery(IT_SUBMISSION_QUERY, {
     variables: { id },
   });
   const submission = data?.itSubmission;
@@ -386,11 +379,11 @@ export function SubmissionDetailPage() {
 // вердикт, метаданные, исходный код и детали запуска из песочницы.
 export function CodeSubmissionDetailPage() {
   const { id = "" } = useParams();
-  const { data, loading, error } = useQuery<{ itCodeSubmission: ITCodeSubmission }>(IT_CODE_SUBMISSION_QUERY, {
+  const { data, loading, error } = useQuery(IT_CODE_SUBMISSION_QUERY, {
     variables: { id },
   });
   const submission = data?.itCodeSubmission;
-  const { data: taskData } = useQuery<{ itTask: ITTask }>(IT_TASK_QUERY, {
+  const { data: taskData } = useQuery(IT_TASK_QUERY, {
     variables: { id: submission?.taskId ?? "" },
     skip: !submission,
   });
@@ -431,7 +424,7 @@ export function CodeSubmissionDetailPage() {
 }
 
 // TaskCard отображает краткую карточку опубликованного теста.
-function TaskCard({ task, topics }: { task: ITTaskList["items"][number]; topics: Topic[] }) {
+function TaskCard({ task, topics }: { task: ITTaskList["items"][number]; topics: ITTaskTopic[] }) {
   const topic = topics.find((item) => item.id === task.topicId);
 
   return (

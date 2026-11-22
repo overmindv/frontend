@@ -12,7 +12,7 @@ const FADE_MS = 300;
 // CollectionNotifications опрашивает только непрочитанные terminal manual jobs текущего администратора.
 export function CollectionNotifications() {
   const { isAdmin } = useAuth();
-  const { data, refetch } = useQuery<{ taskCollectionJobs: { items: TaskCollectionJob[] } }>(COLLECTION_JOBS_QUERY, {
+  const { data, refetch } = useQuery(COLLECTION_JOBS_QUERY, {
     variables: { unreadOnly: true, pagination: { limit: 10, offset: 0 } },
     skip: !isAdmin,
     pollInterval: 5000,

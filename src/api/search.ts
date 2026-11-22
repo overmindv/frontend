@@ -1,9 +1,10 @@
-import { gql } from "@apollo/client";
+import { gql, type TypedDocumentNode } from "@apollo/client";
+import type * as Schema from "./generated";
 import { COURSE_FIELDS, PROGRAM_FIELDS, TOPIC_FIELDS, UNIVERSITY_FIELDS, type Course, type Program, type Topic, type University } from "./catalog";
 import { TASK_SUMMARY_FIELDS, type ITTaskSummary } from "./tasks";
 
 // Единый поиск по каталогу и опубликованным задачам: результаты собраны по видам.
-export const SEARCH_QUERY = gql`
+export const SEARCH_QUERY: TypedDocumentNode<Schema.SearchQuery, Schema.SearchQueryVariables> = gql`
   query Search($query: String!, $limit: Int!) {
     search(query: $query, limit: $limit) {
       universities { ...UniversityFields }
@@ -20,13 +21,7 @@ export const SEARCH_QUERY = gql`
   ${TASK_SUMMARY_FIELDS}
 `;
 
-export interface SearchResults {
-  universities: University[];
-  programs: Program[];
-  courses: Course[];
-  topics: Topic[];
-  tasks: ITTaskSummary[];
-}
+export type SearchResults = Schema.SearchQuery["search"];
 
 export type SearchKindKey = (typeof SEARCH_KINDS)[number]["key"];
 
