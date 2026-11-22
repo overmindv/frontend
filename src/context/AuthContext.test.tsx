@@ -36,3 +36,20 @@ test("выход не открывает форму входа до удален
  expect(finishLogout).toBeDefined();finishLogout!();
  expect(await screen.findByText("Форма входа")).toBeInTheDocument();
 });
+
+test("неуспешный выход сохраняет возможность повторить отзыв сессии", async () => {
+ let attempts=0;
+ vi.stubGlobal("fetch",vi.fn(async (_url,init)=>{
+  const body=JSON.parse(init.body);const logout=body.query.includes("mutation Logout");
+  if(logout&&++attempts===1) return new Response(JSON.stringify({errors:[{message:"down",extensions:{code:"SERVICE_UNAVAILABLE"}}]}),{headers:{"content-type":"application/json"}});
+  return new Response(JSON.stringify({data:logout?{logout:true}:{me:{id:"owner",isAdmin:false,isSuperuser:false}}}),{headers:{"content-type":"application/json"}});
+ }));
+ function Session(){const auth=useAuth();return <button onClick={auth.logout}>Повторить выход</button>;}
+ render(<ApolloProvider client={apolloClient}><MemoryRouter initialEntries={["/profile"]}><AuthProvider><Routes><Route path="/profile" element={<Session/>}/><Route path="/login" element={<p>Форма входа</p>}/></Routes></AuthProvider></MemoryRouter></ApolloProvider>);
+ const {default:userEvent}=await import("@testing-library/user-event");
+ await userEvent.setup().click(await screen.findByRole("button",{name:"Повторить выход"}));
+ expect(await screen.findByRole("alert")).toHaveTextContent("Не удалось выйти");
+ expect(screen.queryByText("Форма входа")).not.toBeInTheDocument();
+ await userEvent.setup().click(screen.getByRole("button",{name:"Повторить выход"}));
+ expect(await screen.findByText("Форма входа")).toBeInTheDocument();
+});

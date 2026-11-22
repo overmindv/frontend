@@ -60,16 +60,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [meData, meLoading]);
 
   const logoutPending = useRef(false);
+  const [logoutError, setLogoutError] = useState(false);
   const logout = useCallback(() => {
     if (logoutPending.current) return;
     logoutPending.current = true;
     // Сначала удаляем cookie: иначе быстрый переход восстанавливает прежнюю сессию.
     void (async () => {
-      await logoutMutation({ context: { optionalSession: true } }).catch(() => undefined);
-      setUser(null);
-      await apolloClient.clearStore();
-      navigate("/login", { replace: true, state: null });
-      logoutPending.current = false;
+      setLogoutError(false);
+      try {
+        await logoutMutation({ context: { optionalSession: true } });
+        setUser(null);
+        await apolloClient.clearStore();
+        navigate("/login", { replace: true, state: null });
+      } catch {
+        setLogoutError(true);
+      } finally {
+        logoutPending.current = false;
+      }
     })();
   }, [logoutMutation, navigate]);
 
@@ -96,7 +103,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
     [logout, meLoading, sessionRestored, signIn, user],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {logoutError && (
+        <div role="alert" className="error-message">Не удалось выйти. Попробуйте ещё раз.</div>
+      )}
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
