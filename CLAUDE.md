@@ -40,8 +40,8 @@ CI (`.github/workflows/ci.yml`) гоняет lint, test:ci и build на каж�
 
 **API-слой** — в `src/api/`:
 - `client.ts` — настройка `apolloClient`: httpOnly session cookie, error-линк, upload-линк. Единственное место создания клиента.
-- `types.ts`: общие модели API, описанные вручную.
-- `queries.ts` / `mutations.ts`: `gql`-документы и общие фрагменты (например, `USER_FIELDS`). Типы операций генерирует `npm run codegen`; их использует `adminUsers.ts`.
+- `types.ts`: общие типы аккаунта и загрузки файлов берутся из сгенерированных операций и фрагментов.
+- `queries.ts` / `mutations.ts`: `gql`-документы и общие фрагменты (например, `USER_FIELDS`). Типы операций генерирует `npm run codegen`; их используют также модули каталога, задач и подборок.
 - `errors.ts` — `getErrorMessage(error)`.
 - Доменные операции вынесены в отдельные модули: `tasks.ts`, `catalog.ts`, `users`-админка (`adminUsers.ts`), `collection.ts` (сбор задач).
 

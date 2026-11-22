@@ -3,14 +3,10 @@ import { useMutation } from "@apollo/client";
 import { Link, useNavigate } from "react-router-dom";
 import { REGISTER_MUTATION } from "../../api/mutations";
 import { getErrorMessage } from "../../api/errors";
-import type { AuthPayload, RegisterInput } from "../../api/types";
+import type { RegisterInput } from "../../api/types";
 import { useAuth } from "../../context/AuthContext";
 import { ErrorMessage } from "../common/ErrorMessage";
 import { Spinner } from "../common/Spinner";
-
-interface RegisterData {
-  register: AuthPayload;
-}
 
 const initialForm = {
   email: "",
@@ -27,10 +23,7 @@ export function Register() {
   const { signIn } = useAuth();
   const [form, setForm] = useState(initialForm);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [register, { loading }] = useMutation<
-    RegisterData,
-    { input: RegisterInput }
-  >(REGISTER_MUTATION);
+  const [register, { loading }] = useMutation(REGISTER_MUTATION);
 
   const updateField = (field: keyof typeof initialForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));

@@ -29,13 +29,18 @@ import {
   type Topic,
   type University,
 } from "../../api/catalog";
+import type { DegreeLevel, TopicDifficulty } from "../../api/generated";
 import { ErrorMessage } from "../../components/common/ErrorMessage";
 import { Spinner } from "../../components/common/Spinner";
 import { useAuth } from "../../context/AuthContext";
 
 const statuses: CatalogStatus[] = ["draft", "active", "hidden", "archived"];
-const degreeLevels = ["other", "bachelor", "master", "specialist", "phd"];
-const topicDifficulties = ["basic", "intro", "medium", "hard", "advanced"];
+const degreeLevels: DegreeLevel[] = ["other", "bachelor", "master", "specialist", "phd"];
+const topicDifficulties: TopicDifficulty[] = ["basic", "intro", "medium", "hard", "advanced"];
+
+function selectedOption<T extends string>(options: readonly T[], value: unknown) {
+  return options.find((option) => option === value);
+}
 
 function CatalogHeader({ title, back }: { title: string; back?: string }) {
   return (
@@ -72,9 +77,10 @@ function Actions({
       <select
         aria-label="Статус"
         value={status}
-        onChange={(event) =>
-          void changeStatus({ variables: { id, status: event.target.value } }).then(refetch)
-        }
+        onChange={(event) => {
+          const next = selectedOption(statuses, event.target.value);
+          if (next) void changeStatus({ variables: { id, status: next } }).then(refetch);
+        }}
       >
         {statuses.map((item) => (
           <option key={item}>{item}</option>
@@ -100,7 +106,7 @@ function Actions({
 
 export function UniversitiesPage() {
   const { isAdmin } = useAuth();
-  const { data, loading, error, refetch } = useQuery<{ universities: University[] }>(
+  const { data, loading, error, refetch } = useQuery(
     UNIVERSITIES_QUERY,
   );
 
@@ -149,7 +155,7 @@ export function UniversityFormPage({ create = false }: { create?: boolean }) {
   const { id = "" } = useParams();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
-  const query = useQuery<{ university: University }>(UNIVERSITY_QUERY, {
+  const query = useQuery(UNIVERSITY_QUERY, {
     variables: { id },
     skip: create,
   });
@@ -170,7 +176,7 @@ export function UniversityFormPage({ create = false }: { create?: boolean }) {
       logoFileId: optionalID(values.logoFileId),
     };
     if (create) {
-      await createItem({ variables: { input: { ...input, status: formString(values.status) || "draft" } } });
+      await createItem({ variables: { input: { ...input, status: selectedOption(statuses, values.status) ?? "draft" } } });
     } else {
       await updateItem({ variables: { id, input } });
     }
@@ -207,7 +213,7 @@ export function ProgramsPage() {
   const { id } = useParams();
   const { isAdmin } = useAuth();
   const parentId = id || null;
-  const { data, loading, error, refetch } = useQuery<{ programs: Program[] }>(PROGRAMS_QUERY, {
+  const { data, loading, error, refetch } = useQuery(PROGRAMS_QUERY, {
     variables: { parentId },
   });
   const [createItem, state] = useMutation(CREATE_PROGRAM);
@@ -252,11 +258,11 @@ export function ProgramFormPage({ create = false }: { create?: boolean }) {
   const { id = "" } = useParams();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
-  const program = useQuery<{ program: Program }>(PROGRAM_QUERY, {
+  const program = useQuery(PROGRAM_QUERY, {
     variables: { id },
     skip: create,
   });
-  const universities = useQuery<{ universities: University[] }>(UNIVERSITIES_QUERY);
+  const universities = useQuery(UNIVERSITIES_QUERY);
   const [createItem, createState] = useMutation(CREATE_PROGRAM);
   const [updateItem, updateState] = useMutation(UPDATE_PROGRAM);
   const item = program.data?.program;
@@ -271,11 +277,11 @@ export function ProgramFormPage({ create = false }: { create?: boolean }) {
       name: formString(values.name),
       shortName: formString(values.shortName),
       faculty: formString(values.faculty),
-      degreeLevel: formString(values.degreeLevel) || "other",
+      degreeLevel: selectedOption(degreeLevels, values.degreeLevel) ?? "other",
       startYear: optionalNumber(values.startYear),
     };
     if (create) {
-      await createItem({ variables: { input: { ...input, status: formString(values.status) || "draft" } } });
+      await createItem({ variables: { input: { ...input, status: selectedOption(statuses, values.status) ?? "draft" } } });
     } else {
       await updateItem({ variables: { id, input: { ...input, clearUniversity: !universityId } } });
     }
@@ -318,7 +324,7 @@ export function CoursesPage() {
   const { id } = useParams();
   const { isAdmin } = useAuth();
   const parentId = id || null;
-  const { data, loading, error, refetch } = useQuery<{ courses: Course[] }>(COURSES_QUERY, {
+  const { data, loading, error, refetch } = useQuery(COURSES_QUERY, {
     variables: { parentId },
   });
   const [createItem, state] = useMutation(CREATE_COURSE);
@@ -361,12 +367,12 @@ export function CourseFormPage({ create = false }: { create?: boolean }) {
   const { id = "" } = useParams();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
-  const course = useQuery<{ course: Course }>(COURSE_QUERY, {
+  const course = useQuery(COURSE_QUERY, {
     variables: { id },
     skip: create,
   });
-  const universities = useQuery<{ universities: University[] }>(UNIVERSITIES_QUERY);
-  const programs = useQuery<{ programs: Program[] }>(PROGRAMS_QUERY, { variables: { parentId: null } });
+  const universities = useQuery(UNIVERSITIES_QUERY);
+  const programs = useQuery(PROGRAMS_QUERY, { variables: { parentId: null } });
   const [createItem, createState] = useMutation(CREATE_COURSE);
   const [updateItem, updateState] = useMutation(UPDATE_COURSE);
   const item = course.data?.course;
@@ -398,7 +404,7 @@ export function CourseFormPage({ create = false }: { create?: boolean }) {
       yearNumber: optionalNumber(values.yearNumber),
     };
     if (create) {
-      await createItem({ variables: { input: { ...input, status: formString(values.status) || "draft" } } });
+      await createItem({ variables: { input: { ...input, status: selectedOption(statuses, values.status) ?? "draft" } } });
     } else {
       await updateItem({ variables: { id, input: { ...input, clearProgram: !selectedProgramID } } });
     }
@@ -460,14 +466,11 @@ export function TopicsPage() {
   const { id } = useParams();
   const { isAdmin } = useAuth();
   const parentId = id || null;
-  const { data, loading, error, refetch } = useQuery<{
-    topics: Topic[];
-    topicTree: Array<{ topic: Topic; children: Array<{ topic: Topic }> }>;
-  }>(TOPICS_QUERY, { variables: { parentId } });
+  const { data, loading, error, refetch } = useQuery(TOPICS_QUERY, { variables: { parentId } });
   const [createItem, state] = useMutation(CREATE_TOPIC);
   const submit = (event: FormEvent<HTMLFormElement>) =>
     createFromForm(event, (input) =>
-      createItem({ variables: { input: { courseId: parentId, ...input } } }).then(() => refetch()),
+      createItem({ variables: { input: { courseId: parentId, title: input.name } } }).then(() => refetch()),
     );
 
   if (loading) return <Spinner />;
@@ -520,17 +523,17 @@ export function TopicFormPage({ create = false }: { create?: boolean }) {
   const { id = "" } = useParams();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
-  const topic = useQuery<{ topic: Topic; topicPrerequisites: Array<{ prerequisiteTopicId: string }> }>(
+  const topic = useQuery(
     TOPIC_QUERY,
     {
       variables: { id },
       skip: create,
     },
   );
-  const universities = useQuery<{ universities: University[] }>(UNIVERSITIES_QUERY);
-  const programs = useQuery<{ programs: Program[] }>(PROGRAMS_QUERY, { variables: { parentId: null } });
-  const courses = useQuery<{ courses: Course[] }>(COURSES_QUERY, { variables: { parentId: null } });
-  const topics = useQuery<{ topics: Topic[] }>(TOPICS_QUERY, { variables: { parentId: null } });
+  const universities = useQuery(UNIVERSITIES_QUERY);
+  const programs = useQuery(PROGRAMS_QUERY, { variables: { parentId: null } });
+  const courses = useQuery(COURSES_QUERY, { variables: { parentId: null } });
+  const topics = useQuery(TOPICS_QUERY, { variables: { parentId: null } });
   const [createItem, createState] = useMutation(CREATE_TOPIC);
   const [updateItem, updateState] = useMutation(UPDATE_TOPIC);
   const [add, addState] = useMutation(ADD_PREREQUISITE);
@@ -583,10 +586,10 @@ export function TopicFormPage({ create = false }: { create?: boolean }) {
       slug: formString(values.slug),
       description: formString(values.description),
       orderIndex: optionalNumber(values.orderIndex) ?? 0,
-      difficulty: formString(values.difficulty) || "basic",
+      difficulty: selectedOption(topicDifficulties, values.difficulty) ?? "basic",
     };
     if (create) {
-      await createItem({ variables: { input: { ...input, status: formString(values.status) || "draft" } } });
+      await createItem({ variables: { input: { ...input, status: selectedOption(statuses, values.status) ?? "draft" } } });
       navigate("/admin/catalog/topics");
       return;
     }

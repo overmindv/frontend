@@ -3,7 +3,6 @@ import { ArrowLeftRight, LockKeyhole } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { MY_PROGRESS_QUERY, USER_PROGRESS_QUERY, type PracticeProgress } from "../api/progress";
 import { PUBLIC_USER_QUERY } from "../api/queries";
-import type { PublicUser } from "../api/types";
 import { getErrorMessage } from "../api/errors";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 import { Spinner } from "../components/common/Spinner";
@@ -13,7 +12,7 @@ export function ComparePage() {
   const { id = "" } = useParams();
   const mine = useQuery<{ myPracticeProgress: PracticeProgress }>(MY_PROGRESS_QUERY, { fetchPolicy: "network-only" });
   const peer = useQuery<{ practiceProgress: PracticeProgress | null }>(USER_PROGRESS_QUERY, { variables: { userId: id }, skip: !id, fetchPolicy: "network-only" });
-  const profile = useQuery<{ userProfile: PublicUser }>(PUBLIC_USER_QUERY, { variables: { id }, skip: !id });
+  const profile = useQuery(PUBLIC_USER_QUERY, { variables: { id }, skip: !id });
   const own = mine.data?.myPracticeProgress;
   const other = peer.data?.practiceProgress;
   const otherName = profile.data?.userProfile ? [profile.data.userProfile.firstName, profile.data.userProfile.lastName].filter(Boolean).join(" ") || profile.data.userProfile.username : "Другой участник";

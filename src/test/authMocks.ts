@@ -1,12 +1,8 @@
 import type { MockedResponse } from "@apollo/client/testing";
 import { ME_QUERY } from "../api/queries";
+import type { MeQuery } from "../api/generated";
 
-// AuthUserShape — подмножество полей, которые AuthProvider читает из me.
-interface AuthUserShape {
-  id: string;
-  isAdmin: boolean;
-  isSuperuser: boolean;
-}
+type AuthUserShape = MeQuery["me"];
 
 export const authUser: AuthUserShape = {
   id: "user-id",

@@ -12,7 +12,6 @@ import {
   SUBMIT_IT_TASK_CODE,
   type ITCodeRunMode,
   type ITCodeSubmission,
-  type ITCodeSubmissionInput,
   type ITExecutionPhaseResult,
   type ITExecutionVerdict,
   type ITProgrammingLanguage,
@@ -62,10 +61,7 @@ export function ProgrammingTaskSolve({ task, isAuthenticated, userId = null, sol
   // sourceReady сообщает, заполнен ли источник активного способа решения.
   const sourceReady = solveMode === "editor" ? draftCode.trim() !== "" : sourceFile !== null;
 
-  const [submitCode, submitState] = useMutation<
-    { submitITTaskCode: ITCodeSubmission },
-    { taskId: string; input: ITCodeSubmissionInput }
-  >(SUBMIT_IT_TASK_CODE);
+  const [submitCode, submitState] = useMutation(SUBMIT_IT_TASK_CODE);
 
   useEffect(() => { if (submission?.status === "completed") delete idempotencyKeys.current[submission.runMode]; }, [submission]);
 

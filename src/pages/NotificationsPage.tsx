@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@apollo/client";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ACKNOWLEDGE_COLLECTION_JOB, COLLECTION_JOBS_QUERY, type TaskCollectionJob, type TaskCollectionJobStatus } from "../api/collection";
+import { ACKNOWLEDGE_COLLECTION_JOB, COLLECTION_JOBS_QUERY, type TaskCollectionJobStatus } from "../api/collection";
 import { getErrorMessage } from "../api/errors";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 import { Spinner } from "../components/common/Spinner";
@@ -23,7 +23,7 @@ export function NotificationsPage() {
   const { isAdmin } = useAuth();
   const [status, setStatus] = useState<StatusFilter>("all");
   const [unread, setUnread] = useState<UnreadFilter>("all");
-  const { data, loading, error, refetch } = useQuery<{ taskCollectionJobs: { items: TaskCollectionJob[] } }>(
+  const { data, loading, error, refetch } = useQuery(
     COLLECTION_JOBS_QUERY,
     { variables: { unreadOnly: false, pagination: { limit: 200, offset: 0 } }, skip: !isAdmin, fetchPolicy: "cache-and-network" },
   );

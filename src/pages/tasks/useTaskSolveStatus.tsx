@@ -35,12 +35,12 @@ export function useTaskSolveStatus(taskId: string, enabled: boolean, userId?: st
     setConfirmedCode((current) => [...current.filter((item) => item.id !== submission.id), submission]);
   }, []);
   const [confirmedAnswers, setConfirmedAnswers] = useState<ITSubmission[]>([]);
-  const answers = useQuery<{ myITSubmissions: { items: ITSubmission[] } }>(MY_IT_SUBMISSIONS_QUERY, {
+  const answers = useQuery(MY_IT_SUBMISSIONS_QUERY, {
     variables: { taskId, pagination: { limit: 100, offset: 0 } },
     skip: !enabled,
     fetchPolicy: "network-only",
   });
-  const code = useQuery<{ myITCodeSubmissions: { items: ITCodeSubmission[] } }>(MY_IT_CODE_SUBMISSIONS_QUERY, {
+  const code = useQuery(MY_IT_CODE_SUBMISSIONS_QUERY, {
     variables: { taskId, pagination: { limit: 100, offset: 0 } },
     skip: !enabled,
     fetchPolicy: "network-only",

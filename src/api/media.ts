@@ -8,7 +8,6 @@ import { MEDIA_FILE_QUERY } from "./queries";
 import type {
   CompleteMediaUploadInput,
   CreateMediaUploadInput,
-  MediaFile,
   MediaUpload,
   User,
 } from "./types";
@@ -40,7 +39,7 @@ async function pollUntilReady(fileId: string, signal?: AbortSignal, timeoutMs = 
   const started = Date.now();
   for (;;) {
     signal?.throwIfAborted();
-    const { data } = await apolloClient.query<{ mediaFile: MediaFile }>({
+    const { data } = await apolloClient.query({
       query: MEDIA_FILE_QUERY,
       variables: { id: fileId },
       fetchPolicy: "no-cache",
@@ -99,7 +98,7 @@ export async function uploadSingleMedia(file: File, options: UploadOptions): Pro
     purpose,
     visibility,
   };
-  const createResult = await apolloClient.mutate<{ createMediaUpload: MediaUpload }>({
+  const createResult = await apolloClient.mutate({
     mutation: CREATE_MEDIA_UPLOAD_MUTATION,
     variables: { input: createInput },
     fetchPolicy: "no-cache",
@@ -114,7 +113,7 @@ export async function uploadSingleMedia(file: File, options: UploadOptions): Pro
   await postToObjectStorage(upload, url, file, signal);
 
   const completeInput: CompleteMediaUploadInput = { fileId: upload.fileId, parts: [] };
-  const completeResult = await apolloClient.mutate<{ completeMediaUpload: MediaFile }>({
+  const completeResult = await apolloClient.mutate({
     mutation: COMPLETE_MEDIA_UPLOAD_MUTATION,
     variables: { input: completeInput },
     fetchPolicy: "no-cache",
@@ -131,7 +130,7 @@ export async function uploadSingleMedia(file: File, options: UploadOptions): Pro
 // Загружает аватар и назначает его текущему пользователю.
 export async function uploadAvatar(file: File): Promise<UploadAvatarResult> {
   const fileId = await uploadSingleMedia(file, { purpose: "avatar", visibility: "public" });
-  const avatarResult = await apolloClient.mutate<{ setMyAvatar: User }>({
+  const avatarResult = await apolloClient.mutate({
     mutation: SET_MY_AVATAR_MUTATION,
     variables: { fileId },
   });

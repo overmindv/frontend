@@ -2,7 +2,7 @@ import { useQuery } from "@apollo/client";
 import { ArrowRight, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { FEED_QUERY, type FeedConnection, type FeedKind } from "../api/feed";
-import { IT_TASKS_QUERY, type ITTaskList } from "../api/tasks";
+import { IT_TASKS_QUERY } from "../api/tasks";
 import { getErrorMessage } from "../api/errors";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 import { Spinner } from "../components/common/Spinner";
@@ -15,7 +15,7 @@ const catalogLinks = [
 ];
 
 export function HomePage() {
-  const { data, loading, error, refetch } = useQuery<{ itTasks: ITTaskList }>(IT_TASKS_QUERY, {
+  const { data, loading, error, refetch } = useQuery(IT_TASKS_QUERY, {
     variables: { filter: {}, pagination: { limit: 8, offset: 0 } },
     fetchPolicy: "cache-and-network",
   });

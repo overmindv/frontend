@@ -1,169 +1,24 @@
-import { gql } from "@apollo/client";
+import { gql, type TypedDocumentNode } from "@apollo/client";
+import type * as Schema from "./generated";
 
-export type ITTaskStatus = "draft" | "published" | "archived";
-export type ITTaskType = "single_choice" | "multiple_choice" | "programming";
-export type ITTaskDifficulty = "easy" | "medium" | "hard";
-export type ITSubmissionVerdict = "accepted" | "wrong_answer";
-export type ITProgrammingLanguage = "python" | "go";
-export type ITCodeRunMode = "samples" | "graded";
-export type ITCodeSubmissionStatus = "queued" | "completed";
-export type ITExecutionVerdict =
-  | "accepted"
-  | "wrong_answer"
-  | "compilation_error"
-  | "runtime_error"
-  | "time_limit_exceeded"
-  | "memory_limit_exceeded"
-  | "output_limit_exceeded"
-  | "checker_error"
-  | "infrastructure_error"
-  | "cancelled";
+export type ITTaskStatus = Schema.ItTaskStatus;
+export type ITTaskType = Schema.ItTaskType;
+export type ITTaskDifficulty = Schema.ItTaskDifficulty;
+export type ITProgrammingLanguage = Schema.ItProgrammingLanguage;
+export type ITCodeRunMode = Schema.ItCodeRunMode;
+export type ITExecutionVerdict = Schema.ItExecutionVerdict;
 
-export interface ITTaskOption {
-  id: string;
-  text: string;
-  position: number;
-  isCorrect?: boolean | null;
-}
+export type ITTaskSummary = Schema.ItTaskSummaryFieldsFragment;
+export type ITTaskTopic = Schema.ItTaskTopicsQuery["topics"][number];
+export type ITTask = Schema.ItTaskFieldsFragment;
+export type ITTaskList = Schema.ItTasksQuery["itTasks"];
+export type ITSubmission = Schema.ItSubmissionFieldsFragment;
+export type ITCodeSubmission = Schema.ItCodeSubmissionFieldsFragment;
+export type ITExecutionPhaseResult = NonNullable<ITCodeSubmission["compilation"]>;
 
-export interface ITTaskSummary {
-  id: string;
-  status: ITTaskStatus;
-  taskVersionId: string;
-  versionNumber: number;
-  topicId?: string | null;
-  title: string;
-  taskType: ITTaskType;
-  difficulty: ITTaskDifficulty;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ITTask extends ITTaskSummary {
-  statement: string;
-  options: ITTaskOption[];
-  tags: string[];
-  examples: ITTaskExample[];
-  constraints: string[];
-  source?: ITTaskSource | null;
-}
-
-export interface ITTaskExample {
-  input: string;
-  output: string;
-  explanation: string;
-}
-
-export interface ITTaskSource {
-  sourceId: string;
-  sourceName: string;
-  sourceUrl: string;
-  publishedAt?: string | null;
-}
-
-export interface ITTaskList {
-  items: ITTaskSummary[];
-  limit: number;
-  offset: number;
-}
-
-export interface ITSubmission {
-  taskTitle?: string;
-  id: string;
-  userId: string;
-  taskId: string;
-  taskVersionId: string;
-  taskVersionNumber: number;
-  selectedOptionIds: string[];
-  correctOptionIds: string[];
-  correct: boolean;
-  verdict: ITSubmissionVerdict;
-  taskUpdated: boolean;
-  latestTaskVersionId: string;
-  latestVersionNumber: number;
-  createdAt: string;
-}
-
-export interface ITExecutionPhaseResult {
-  exitCode?: number | null;
-  stdout: string;
-  stderr: string;
-  durationMs: number;
-  memoryBytes: number;
-}
-
-export interface ITExecutionTestResult extends ITExecutionPhaseResult {
-  testId: string;
-  verdict: ITExecutionVerdict;
-}
-
-export interface ITExecutionFailure {
-  code: string;
-  message: string;
-}
-
-export interface ITCodeSubmission {
-  runMode: ITCodeRunMode;
-  id: string;
-  userId: string;
-  taskId: string;
-  taskVersionId: string;
-  taskVersionNumber: number;
-  executionId: string;
-  correlationId: string;
-  language: ITProgrammingLanguage;
-  sourceFileName: string;
-  status: ITCodeSubmissionStatus;
-  verdict?: ITExecutionVerdict | null;
-  compilation?: ITExecutionPhaseResult | null;
-  execution?: ITExecutionPhaseResult | null;
-  tests: ITExecutionTestResult[];
-  failure?: ITExecutionFailure | null;
-  createdAt: string;
-  updatedAt: string;
-  completedAt?: string | null;
-}
-
-export interface ITTaskFilter {
-  search?: string;
-  taskType?: ITTaskType;
-  difficulty?: ITTaskDifficulty;
-  topicId?: string;
-}
-
-export interface ITAdminTaskFilter extends ITTaskFilter {
-  status?: ITTaskStatus;
-}
-
-export interface ITTaskInput {
-  topicId?: string | null;
-  title: string;
-  statement: string;
-  taskType: ITTaskType;
-  difficulty: ITTaskDifficulty;
-  options: Array<{
-    text: string;
-    isCorrect: boolean;
-  }>;
-  tags?: string[];
-  examples?: ITTaskExample[];
-  constraints?: string[];
-}
-
-export interface ITSubmissionInput {
-  taskVersionId: string;
-  idempotencyKey: string;
-  selectedOptionIds: string[];
-}
-
-export interface ITCodeSubmissionInput {
-  runMode: ITCodeRunMode;
-  taskVersionId: string;
-  idempotencyKey: string;
-  language: ITProgrammingLanguage;
-  file?: File;
-  sourceCode?: string;
-}
+export type ITTaskFilter = Schema.ItTaskFilter;
+export type ITAdminTaskFilter = Schema.ItAdminTaskFilter;
+export type ITTaskInput = Schema.ItTaskInput;
 
 export const TASK_SUMMARY_FIELDS = gql`
   fragment ITTaskSummaryFields on ITTaskSummary {
@@ -271,7 +126,7 @@ const CODE_SUBMISSION_FIELDS = gql`
   }
 `;
 
-export const IT_TASKS_QUERY = gql`
+export const IT_TASKS_QUERY: TypedDocumentNode<Schema.ItTasksQuery, Schema.ItTasksQueryVariables> = gql`
   query ITTasks($filter: ITTaskFilter, $pagination: PaginationInput) {
     itTasks(filter: $filter, pagination: $pagination) {
       items { ...ITTaskSummaryFields }
@@ -282,14 +137,14 @@ export const IT_TASKS_QUERY = gql`
   ${TASK_SUMMARY_FIELDS}
 `;
 
-export const IT_TASK_QUERY = gql`
+export const IT_TASK_QUERY: TypedDocumentNode<Schema.ItTaskQuery, Schema.ItTaskQueryVariables> = gql`
   query ITTask($id: ID!) {
     itTask(id: $id) { ...ITTaskFields }
   }
   ${TASK_FIELDS}
 `;
 
-export const IT_TASK_TOPICS_QUERY = gql`
+export const IT_TASK_TOPICS_QUERY: TypedDocumentNode<Schema.ItTaskTopicsQuery, Schema.ItTaskTopicsQueryVariables> = gql`
   query ITTaskTopics {
     topics(pagination: { limit: 100, offset: 0 }) {
       id
@@ -298,7 +153,7 @@ export const IT_TASK_TOPICS_QUERY = gql`
   }
 `;
 
-export const ADMIN_IT_TASKS_QUERY = gql`
+export const ADMIN_IT_TASKS_QUERY: TypedDocumentNode<Schema.AdminItTasksQuery, Schema.AdminItTasksQueryVariables> = gql`
   query AdminITTasks($filter: ITAdminTaskFilter, $pagination: PaginationInput) {
     adminITTasks(filter: $filter, pagination: $pagination) {
       items { ...ITTaskSummaryFields }
@@ -309,21 +164,21 @@ export const ADMIN_IT_TASKS_QUERY = gql`
   ${TASK_SUMMARY_FIELDS}
 `;
 
-export const ADMIN_IT_TASK_QUERY = gql`
+export const ADMIN_IT_TASK_QUERY: TypedDocumentNode<Schema.AdminItTaskQuery, Schema.AdminItTaskQueryVariables> = gql`
   query AdminITTask($id: ID!) {
     adminITTask(id: $id) { ...ITTaskFields }
   }
   ${TASK_FIELDS}
 `;
 
-export const IT_SUBMISSION_QUERY = gql`
+export const IT_SUBMISSION_QUERY: TypedDocumentNode<Schema.ItSubmissionQuery, Schema.ItSubmissionQueryVariables> = gql`
   query ITSubmission($id: ID!) {
     itSubmission(id: $id) { ...ITSubmissionFields }
   }
   ${SUBMISSION_FIELDS}
 `;
 
-export const MY_IT_SUBMISSIONS_QUERY = gql`
+export const MY_IT_SUBMISSIONS_QUERY: TypedDocumentNode<Schema.MyItSubmissionsQuery, Schema.MyItSubmissionsQueryVariables> = gql`
   query MyITSubmissions($taskId: ID, $pagination: PaginationInput) {
     myITSubmissions(taskId: $taskId, pagination: $pagination) {
       items { ...ITSubmissionFields }
@@ -334,7 +189,7 @@ export const MY_IT_SUBMISSIONS_QUERY = gql`
   ${SUBMISSION_FIELDS}
 `;
 
-export const IT_CODE_SUBMISSION_QUERY = gql`
+export const IT_CODE_SUBMISSION_QUERY: TypedDocumentNode<Schema.ItCodeSubmissionQuery, Schema.ItCodeSubmissionQueryVariables> = gql`
   query ITCodeSubmission($id: ID!) {
     itCodeSubmission(id: $id) {
       ...ITCodeSubmissionFields
@@ -343,7 +198,7 @@ export const IT_CODE_SUBMISSION_QUERY = gql`
   ${CODE_SUBMISSION_FIELDS}
 `;
 
-export const MY_IT_CODE_SUBMISSIONS_QUERY = gql`
+export const MY_IT_CODE_SUBMISSIONS_QUERY: TypedDocumentNode<Schema.MyItCodeSubmissionsQuery, Schema.MyItCodeSubmissionsQueryVariables> = gql`
   query MyITCodeSubmissions($taskId: ID, $pagination: PaginationInput) {
     myITCodeSubmissions(taskId: $taskId, pagination: $pagination) {
       items {
@@ -356,41 +211,41 @@ export const MY_IT_CODE_SUBMISSIONS_QUERY = gql`
   ${CODE_SUBMISSION_FIELDS}
 `;
 
-export const CREATE_IT_TASK = gql`
+export const CREATE_IT_TASK: TypedDocumentNode<Schema.CreateItTaskMutation, Schema.CreateItTaskMutationVariables> = gql`
   mutation CreateITTask($input: ITTaskInput!) {
     createITTask(input: $input) { ...ITTaskFields }
   }
   ${TASK_FIELDS}
 `;
 
-export const UPDATE_IT_TASK = gql`
+export const UPDATE_IT_TASK: TypedDocumentNode<Schema.UpdateItTaskMutation, Schema.UpdateItTaskMutationVariables> = gql`
   mutation UpdateITTask($id: ID!, $input: ITTaskInput!) {
     updateITTask(id: $id, input: $input) { ...ITTaskFields }
   }
   ${TASK_FIELDS}
 `;
 
-export const CHANGE_IT_TASK_STATUS = gql`
+export const CHANGE_IT_TASK_STATUS: TypedDocumentNode<Schema.ChangeItTaskStatusMutation, Schema.ChangeItTaskStatusMutationVariables> = gql`
   mutation ChangeITTaskStatus($id: ID!, $status: ITTaskStatus!) {
     changeITTaskStatus(id: $id, status: $status) { ...ITTaskFields }
   }
   ${TASK_FIELDS}
 `;
 
-export const DELETE_IT_TASK = gql`
+export const DELETE_IT_TASK: TypedDocumentNode<Schema.DeleteItTaskMutation, Schema.DeleteItTaskMutationVariables> = gql`
   mutation DeleteITTask($id: ID!) {
     deleteITTask(id: $id)
   }
 `;
 
-export const SUBMIT_IT_TASK_ANSWER = gql`
+export const SUBMIT_IT_TASK_ANSWER: TypedDocumentNode<Schema.SubmitItTaskAnswerMutation, Schema.SubmitItTaskAnswerMutationVariables> = gql`
   mutation SubmitITTaskAnswer($taskId: ID!, $input: ITSubmissionInput!) {
     submitITTaskAnswer(taskId: $taskId, input: $input) { ...ITSubmissionFields }
   }
   ${SUBMISSION_FIELDS}
 `;
 
-export const SUBMIT_IT_TASK_CODE = gql`
+export const SUBMIT_IT_TASK_CODE: TypedDocumentNode<Schema.SubmitItTaskCodeMutation, Schema.SubmitItTaskCodeMutationVariables> = gql`
   mutation SubmitITTaskCode($taskId: ID!, $input: ITCodeSubmissionInput!) {
     submitITTaskCode(taskId: $taskId, input: $input) {
       ...ITCodeSubmissionFields

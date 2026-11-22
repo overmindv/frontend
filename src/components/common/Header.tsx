@@ -4,7 +4,7 @@ import { Bell, CircleUserRound, LogIn, Menu, Moon, Settings, Sun, X } from "luci
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
-import { SEARCH_QUERY, SEARCH_KINDS, kindDescription, kindHref, kindTitle, totalResults, type SearchResults, type Searchable } from "../../api/search";
+import { SEARCH_QUERY, SEARCH_KINDS, kindDescription, kindHref, kindTitle, totalResults, type Searchable } from "../../api/search";
 
 const primaryLinks = [
   ["/tasks", "Задачи"],
@@ -51,7 +51,7 @@ export function Header() {
     return () => window.clearTimeout(handle);
   }, [query]);
 
-  const { data, loading } = useQuery<{ search: SearchResults }>(SEARCH_QUERY, {
+  const { data, loading } = useQuery(SEARCH_QUERY, {
     variables: { query: debouncedQuery, limit: 5 },
     skip: !debouncedQuery,
   });

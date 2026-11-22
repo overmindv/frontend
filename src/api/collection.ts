@@ -1,107 +1,11 @@
-import { gql } from "@apollo/client";
-import type { ITTaskDifficulty, ITTaskExample } from "./tasks";
+import { gql, type TypedDocumentNode } from "@apollo/client";
+import type * as Schema from "./generated";
 
-export type TaskCandidateStatus = "pending" | "approved" | "rejected";
-export type TaskCollectionJobStatus = "queued" | "running" | "succeeded" | "partial" | "failed";
-
-export interface TaskCollectionSource {
-  id: string;
-  kind: string;
-  sourceId: string;
-  url: string;
-  status: string;
-  collectedTotal: number;
-  importedTotal: number;
-  duplicatesTotal: number;
-  invalidTotal: number;
-  errorMessage: string;
-}
-
-export interface TaskCandidate {
-  id: string;
-  status: TaskCandidateStatus;
-  revision: number;
-  externalId: string;
-  sourceId: string;
-  sourceName: string;
-  sourceUrl: string;
-  sourcePublishedAt?: string | null;
-  retrievedAt: string;
-  collectionJobId: string;
-  topicId?: string | null;
-  problemListId?: string | null;
-  title: string;
-  statement: string;
-  difficulty: ITTaskDifficulty;
-  tags: string[];
-  examples: ITTaskExample[];
-  constraints: string[];
-  approvedTaskId?: string | null;
-  rejectionReason: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface TaskCandidateList {
-  items: TaskCandidate[];
-  limit: number;
-  offset: number;
-}
-
-export type ITTaskStatus = "draft" | "published" | "archived";
-
-export interface ProblemListMember {
-  taskId: string;
-  title: string;
-  difficulty: ITTaskDifficulty;
-  status: ITTaskStatus;
-}
-
-export interface ProblemList {
-  id: string;
-  name: string;
-  sourceId: string;
-  sourceUrl: string;
-  memberCount: number;
-  pendingCandidates: number;
-  createdAt: string;
-  updatedAt: string;
-  members?: ProblemListMember[];
-}
-
-export interface ProblemListPage {
-  items: ProblemList[];
-  limit: number;
-  offset: number;
-}
-
-export interface TaskCandidateReviewInput {
-  expectedRevision: number;
-  topicId?: string | null;
-  title: string;
-  statement: string;
-  difficulty: ITTaskDifficulty;
-  tags: string[];
-  examples: ITTaskExample[];
-  constraints: string[];
-}
-
-export interface TaskCollectionJob {
-  id: string;
-  trigger: string;
-  requestedBy?: string | null;
-  status: TaskCollectionJobStatus;
-  collectedTotal: number;
-  importedTotal: number;
-  duplicatesTotal: number;
-  invalidTotal: number;
-  errorCount: number;
-  errorMessage: string;
-  notificationAcknowledged: boolean;
-  createdAt: string;
-  finishedAt?: string | null;
-  sources?: TaskCollectionSource[];
-}
+export type TaskCandidateStatus = Schema.TaskCandidateStatus;
+export type TaskCollectionJobStatus = Schema.TaskCollectionJobStatus;
+export type ProblemList = Schema.ProblemListFieldsFragment;
+export type TaskCandidateReviewInput = Schema.TaskCandidateReviewInput;
+export type TaskCollectionJob = Schema.TaskCollectionJobFieldsFragment;
 
 const CANDIDATE_FIELDS = gql`
   fragment TaskCandidateFields on TaskCandidate {
@@ -118,11 +22,11 @@ const JOB_FIELDS = gql`
   }
 `;
 
-export const COLLECTION_SOURCES_QUERY = gql`
+export const COLLECTION_SOURCES_QUERY: TypedDocumentNode<Schema.TaskCollectionSourcesQuery, Schema.TaskCollectionSourcesQueryVariables> = gql`
   query TaskCollectionSources { taskCollectionSources { telegramChannels websiteSources } }
 `;
 
-export const COLLECTION_JOBS_QUERY = gql`
+export const COLLECTION_JOBS_QUERY: TypedDocumentNode<Schema.TaskCollectionJobsQuery, Schema.TaskCollectionJobsQueryVariables> = gql`
   query TaskCollectionJobs($unreadOnly: Boolean, $pagination: PaginationInput) {
     taskCollectionJobs(unreadOnly: $unreadOnly, pagination: $pagination) {
       items { ...TaskCollectionJobFields }
@@ -132,7 +36,7 @@ export const COLLECTION_JOBS_QUERY = gql`
   ${JOB_FIELDS}
 `;
 
-export const COLLECTION_JOB_QUERY = gql`
+export const COLLECTION_JOB_QUERY: TypedDocumentNode<Schema.TaskCollectionJobQuery, Schema.TaskCollectionJobQueryVariables> = gql`
   query TaskCollectionJob($id: ID!) {
     taskCollectionJob(id: $id) {
       ...TaskCollectionJobFields
@@ -144,14 +48,14 @@ export const COLLECTION_JOB_QUERY = gql`
   ${JOB_FIELDS}
 `;
 
-export const START_COLLECTION = gql`
+export const START_COLLECTION: TypedDocumentNode<Schema.StartTaskCollectionMutation, Schema.StartTaskCollectionMutationVariables> = gql`
   mutation StartTaskCollection($input: StartTaskCollectionInput!) {
     startTaskCollection(input: $input) { ...TaskCollectionJobFields }
   }
   ${JOB_FIELDS}
 `;
 
-export const ACKNOWLEDGE_COLLECTION_JOB = gql`
+export const ACKNOWLEDGE_COLLECTION_JOB: TypedDocumentNode<Schema.AcknowledgeTaskCollectionJobMutation, Schema.AcknowledgeTaskCollectionJobMutationVariables> = gql`
   mutation AcknowledgeTaskCollectionJob($id: ID!) { acknowledgeTaskCollectionJob(id: $id) }
 `;
 
@@ -161,7 +65,7 @@ const PROBLEM_LIST_FIELDS = gql`
   }
 `;
 
-export const PROBLEM_LISTS_QUERY = gql`
+export const PROBLEM_LISTS_QUERY: TypedDocumentNode<Schema.ProblemListsQuery, Schema.ProblemListsQueryVariables> = gql`
   query ProblemLists($pagination: PaginationInput) {
     problemLists(pagination: $pagination) {
       items { ...ProblemListFields }
@@ -171,7 +75,7 @@ export const PROBLEM_LISTS_QUERY = gql`
   ${PROBLEM_LIST_FIELDS}
 `;
 
-export const PROBLEM_LIST_QUERY = gql`
+export const PROBLEM_LIST_QUERY: TypedDocumentNode<Schema.ProblemListQuery, Schema.ProblemListQueryVariables> = gql`
   query ProblemList($id: ID!) {
     problemList(id: $id) {
       ...ProblemListFields
@@ -181,7 +85,7 @@ export const PROBLEM_LIST_QUERY = gql`
   ${PROBLEM_LIST_FIELDS}
 `;
 
-export const TASK_CANDIDATES_QUERY = gql`
+export const TASK_CANDIDATES_QUERY: TypedDocumentNode<Schema.TaskCandidatesQuery, Schema.TaskCandidatesQueryVariables> = gql`
   query TaskCandidates($filter: TaskCandidateFilter, $pagination: PaginationInput) {
     taskCandidates(filter: $filter, pagination: $pagination) {
       items { ...TaskCandidateFields }
@@ -191,25 +95,25 @@ export const TASK_CANDIDATES_QUERY = gql`
   ${CANDIDATE_FIELDS}
 `;
 
-export const TASK_CANDIDATE_QUERY = gql`
+export const TASK_CANDIDATE_QUERY: TypedDocumentNode<Schema.TaskCandidateQuery, Schema.TaskCandidateQueryVariables> = gql`
   query TaskCandidate($id: ID!) { taskCandidate(id: $id) { ...TaskCandidateFields } }
   ${CANDIDATE_FIELDS}
 `;
 
-export const UPDATE_TASK_CANDIDATE = gql`
+export const UPDATE_TASK_CANDIDATE: TypedDocumentNode<Schema.UpdateTaskCandidateMutation, Schema.UpdateTaskCandidateMutationVariables> = gql`
   mutation UpdateTaskCandidate($id: ID!, $input: TaskCandidateReviewInput!) {
     updateTaskCandidate(id: $id, input: $input) { ...TaskCandidateFields }
   }
   ${CANDIDATE_FIELDS}
 `;
 
-export const APPROVE_TASK_CANDIDATE = gql`
+export const APPROVE_TASK_CANDIDATE: TypedDocumentNode<Schema.ApproveTaskCandidateMutation, Schema.ApproveTaskCandidateMutationVariables> = gql`
   mutation ApproveTaskCandidate($id: ID!, $input: TaskCandidateReviewInput!) {
     approveTaskCandidate(id: $id, input: $input) { id status taskType }
   }
 `;
 
-export const REJECT_TASK_CANDIDATE = gql`
+export const REJECT_TASK_CANDIDATE: TypedDocumentNode<Schema.RejectTaskCandidateMutation, Schema.RejectTaskCandidateMutationVariables> = gql`
   mutation RejectTaskCandidate($id: ID!, $expectedRevision: Int!, $reason: String) {
     rejectTaskCandidate(id: $id, expectedRevision: $expectedRevision, reason: $reason) { ...TaskCandidateFields }
   }

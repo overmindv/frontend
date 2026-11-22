@@ -1,7 +1,7 @@
 import { useQuery } from "@apollo/client";
 import { ArrowRight, Search } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
-import { SEARCH_QUERY, SEARCH_KINDS, kindDescription, kindHref, kindTitle, totalResults, type SearchResults } from "../api/search";
+import { SEARCH_QUERY, SEARCH_KINDS, kindDescription, kindHref, kindTitle, totalResults } from "../api/search";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 import { Spinner } from "../components/common/Spinner";
 
@@ -9,7 +9,7 @@ import { Spinner } from "../components/common/Spinner";
 export function SearchPage() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") ?? "";
-  const { data, loading, error } = useQuery<{ search: SearchResults }>(SEARCH_QUERY, {
+  const { data, loading, error } = useQuery(SEARCH_QUERY, {
     variables: { query, limit: 20 },
     skip: !query.trim(),
   });

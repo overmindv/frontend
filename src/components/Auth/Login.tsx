@@ -3,16 +3,11 @@ import { useMutation } from "@apollo/client";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LOGIN_MUTATION } from "../../api/mutations";
 import { getErrorMessage } from "../../api/errors";
-import type { AuthPayload, LoginInput } from "../../api/types";
 import { useAuth } from "../../context/AuthContext";
 import { ErrorMessage } from "../common/ErrorMessage";
 import { Spinner } from "../common/Spinner";
 
 import { authReturnPath } from "../../utils/authReturnPath";
-
-interface LoginData {
-  login: AuthPayload;
-}
 
 export function Login() {
   const navigate = useNavigate();
@@ -21,9 +16,7 @@ export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [login, { loading }] = useMutation<LoginData, { input: LoginInput }>(
-    LOGIN_MUTATION,
-  );
+  const [login, { loading }] = useMutation(LOGIN_MUTATION);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

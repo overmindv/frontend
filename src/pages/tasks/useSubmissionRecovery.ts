@@ -79,7 +79,7 @@ export function useSubmissionRecovery(scope: Scope) {
           requestTimer = setTimeout(() => { controller?.abort(); reject(new Error("request timeout")); }, Math.min(requestTimeoutMs, endsAt - Date.now()));
         });
         const response = await Promise.race([
-          client.query<{ itCodeSubmission: ITCodeSubmission | null }>({
+          client.query({
             query: IT_CODE_SUBMISSION_QUERY, variables: { id: receipt.id }, fetchPolicy: "no-cache",
             context: { fetchOptions: { signal: controller.signal } },
           }), timeout,

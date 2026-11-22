@@ -14,15 +14,10 @@ import {
   TASK_CANDIDATES_QUERY,
   UPDATE_TASK_CANDIDATE,
   type ProblemList,
-  type ProblemListPage,
-  type TaskCandidate,
-  type TaskCandidateList,
   type TaskCandidateReviewInput,
   type TaskCandidateStatus,
-  type TaskCollectionJob,
 } from "../../api/collection";
-import { IT_TASK_TOPICS_QUERY, type ITTaskDifficulty, type ITTaskExample } from "../../api/tasks";
-import type { Topic } from "../../api/catalog";
+import { IT_TASK_TOPICS_QUERY, type ITTaskDifficulty } from "../../api/tasks";
 import { getErrorMessage } from "../../api/errors";
 import { ErrorMessage } from "../../components/common/ErrorMessage";
 import { Spinner } from "../../components/common/Spinner";
@@ -40,19 +35,19 @@ export function CollectedTasksPage() {
   const [offset, setOffset] = useState(0);
   const [status, setStatus] = useState<TaskCandidateStatus | "">("pending");
   const [sourceId, setSourceId] = useState("");
-  const sources = useQuery<{ taskCollectionSources: { telegramChannels: string[]; websiteSources: string[] } }>(COLLECTION_SOURCES_QUERY, { skip: !isAdmin });
-  const lists = useQuery<{ problemLists: ProblemListPage }>(PROBLEM_LISTS_QUERY, { variables: { pagination: { limit: 50, offset: 0 } }, skip: !isAdmin });
-  const candidates = useQuery<{ taskCandidates: TaskCandidateList }>(TASK_CANDIDATES_QUERY, {
+  const sources = useQuery(COLLECTION_SOURCES_QUERY, { skip: !isAdmin });
+  const lists = useQuery(PROBLEM_LISTS_QUERY, { variables: { pagination: { limit: 50, offset: 0 } }, skip: !isAdmin });
+  const candidates = useQuery(TASK_CANDIDATES_QUERY, {
     variables: { filter: { ...(status ? { status } : {}), ...(sourceId ? { sourceId } : {}), ...(listId ? { problemListId: listId } : {}) }, pagination: { limit: pageSize, offset } },
     skip: !isAdmin,
     fetchPolicy: "cache-and-network",
   });
-  const jobs = useQuery<{ taskCollectionJobs: { items: TaskCollectionJob[] } }>(COLLECTION_JOBS_QUERY, {
+  const jobs = useQuery(COLLECTION_JOBS_QUERY, {
     variables: { unreadOnly: false, pagination: { limit: 10, offset: 0 } },
     skip: !isAdmin,
     pollInterval: 5000,
   });
-  const selectedJob = useQuery<{ taskCollectionJob: TaskCollectionJob }>(COLLECTION_JOB_QUERY, {
+  const selectedJob = useQuery(COLLECTION_JOB_QUERY, {
     variables: { id: selectedJobID },
     skip: !isAdmin || !selectedJobID,
     pollInterval: 5000,
@@ -118,8 +113,8 @@ export function CandidateEditorPage() {
   const { isAdmin } = useAuth();
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const candidateQuery = useQuery<{ taskCandidate: TaskCandidate }>(TASK_CANDIDATE_QUERY, { variables: { id }, skip: !isAdmin });
-  const topics = useQuery<{ topics: Topic[] }>(IT_TASK_TOPICS_QUERY, { skip: !isAdmin });
+  const candidateQuery = useQuery(TASK_CANDIDATE_QUERY, { variables: { id }, skip: !isAdmin });
+  const topics = useQuery(IT_TASK_TOPICS_QUERY, { skip: !isAdmin });
   const [update, updateState] = useMutation(UPDATE_TASK_CANDIDATE);
   const [approve, approveState] = useMutation(APPROVE_TASK_CANDIDATE);
   const [reject, rejectState] = useMutation(REJECT_TASK_CANDIDATE);
@@ -148,8 +143,10 @@ export function CandidateEditorPage() {
     </div></section></main>;
 }
 
-function ExamplesEditor({ examples, onChange }: { examples: ITTaskExample[]; onChange: (items: ITTaskExample[]) => void }) {
-  const change = (index: number, field: keyof ITTaskExample, value: string) => onChange(examples.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item));
+type CandidateExamples = TaskCandidateReviewInput["examples"];
+
+function ExamplesEditor({ examples, onChange }: { examples: CandidateExamples; onChange: (items: CandidateExamples) => void }) {
+  const change = (index: number, field: "input" | "output", value: string) => onChange(examples.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item));
   return <fieldset className="field"><legend>Примеры</legend>{examples.map((example, index) => <div className="inline-form" key={index}><input aria-label={`Ввод ${index + 1}`} placeholder="Input" value={example.input} onChange={(event) => change(index, "input", event.target.value)} /><input aria-label={`Вывод ${index + 1}`} placeholder="Output" value={example.output} onChange={(event) => change(index, "output", event.target.value)} /><button className="button button--ghost" type="button" onClick={() => onChange(examples.filter((_, itemIndex) => itemIndex !== index))}>Удалить</button></div>)}<button className="button button--ghost" type="button" onClick={() => onChange([...examples, { input: "", output: "", explanation: "" }])}>+ Пример</button></fieldset>;
 }
 
