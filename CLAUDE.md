@@ -76,3 +76,13 @@ CI (`.github/workflows/ci.yml`) гоняет lint, test:ci и build на каж�
 - Проверки: `make -C ../infra agent-verify SERVICE=frontend DRY_RUN=1` показывает команды.
 - В конце приведи фактические результаты и непроверенные места; сохрани следующий шаг.
 - Не публикуй, не очищай БД и не отправляй изменения автоматически.
+
+## Продление браузерной сессии (OVM-295)
+
+`sessionFetch` выполняет refreshSession preflight до сетевых GraphQL-запросов.
+Gateway возвращает только срок, хранит refresh в httpOnly cookie; JS не получает refresh.
+Web Locks одного origin сериализует preflight/login/register/logout между вкладками;
+без Web Locks login остаётся access-only. Mutation не повторяется после ошибок.
+Срок проверяет сервер: кэша по часам браузера нет. Неуспешный logout показывает ошибку
+и допускает повтор; cookie удаляются gateway только после подтверждения отзыва.
+Users OVM-267 и gateway OVM-295 должны быть развёрнуты до этого frontend.

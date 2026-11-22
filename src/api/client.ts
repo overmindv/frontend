@@ -6,6 +6,8 @@ import {
 import { onError } from "@apollo/client/link/error";
 import createUploadLink from "apollo-upload-client/createUploadLink.mjs";
 
+import { createSessionFetch } from "./sessionFetch";
+
 let unauthenticatedHandler: () => void = () => undefined;
 
 export function setUnauthenticatedHandler(handler: () => void) {
@@ -33,7 +35,13 @@ const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
   }
 });
 
+const sessionFetch = createSessionFetch(
+  (...args) => fetch(...args),
+  typeof navigator !== "undefined" && navigator.locks ? navigator.locks : undefined,
+);
+
 const uploadLink = createUploadLink({
+  fetch: sessionFetch,
   uri: import.meta.env.VITE_API_URL ?? "/graphql",
   fetchOptions: { credentials: "include" },
 });
