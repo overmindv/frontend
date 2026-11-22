@@ -4,7 +4,7 @@
   "version": "0.2.0",
   "type": "module",
   "engines": {
-    "node": ">=22.15.0"
+    "node": ">=22.18.0"
   },
   "scripts": {
     "dev": "vite",
@@ -16,7 +16,7 @@
     "preview": "vite preview --host 0.0.0.0 --port 4173",
     "schema:check": "node scripts/check-schema.mjs",
     "codegen": "npm run schema:check && graphql-codegen --config codegen.yml",
-    "codegen:check": "npm run codegen && git diff --exit-code -- src/api/generated.ts"
+    "codegen:check": "npm run schema:check && graphql-codegen --config codegen.yml --check"
   },
   "dependencies": {
     "@apollo/client": "3.13.9",
@@ -31,8 +31,15 @@
     "remark-parse": "11.0.0",
     "unified": "11.0.5"
   },
+  "overrides": {
+    "graphql-config@6.0.0": {
+      "minimatch": "11.0.9"
+    }
+  },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@graphql-codegen/cli": "8.0.0",
+    "@graphql-codegen/typescript-operations": "7.0.2",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.0",
     "@testing-library/user-event": "14.6.1",

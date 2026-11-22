@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 React 19 / TypeScript frontend-клиент Overmindv. Приложение — SPA на Vite 8, работает только с GraphQL API `api-gateway` и **не обращается** к backend-сервисам напрямую. Стек: React 19, Apollo Client 3, react-router-dom v6, lucide-react (иконки). Тесты — Vitest + Testing Library в jsdom.
 
-Требуется Node.js 22.15+.
+Требуется Node.js 22.18+.
 
 ## Команды
 
@@ -18,6 +18,7 @@ npm run typecheck      # tsc --noEmit
 npm run test           # vitest (watch)
 npm run test:ci        # vitest run (однократный прогон)
 npm run build          # typecheck + vite build
+npm run codegen:check  # проверка схемы и типов операций
 ```
 
 Запуск одного теста / группы: `npx vitest run src/components/Auth/Login.test.tsx` (путь до файла, или флаги фильтрации, напр. `-t "вход"`). В watch-режиме — `npm run test`.
@@ -39,8 +40,8 @@ CI (`.github/workflows/ci.yml`) гоняет lint, test:ci и build на каж�
 
 **API-слой** — в `src/api/`:
 - `client.ts` — настройка `apolloClient`: httpOnly session cookie, error-линк, upload-линк. Единственное место создания клиента.
-- `types.ts` — GraphQL-типы, **написанные вручную** (без codegen).
-- `queries.ts` / `mutations.ts` — `gql`-документы, шаринг фрагментов (напр. `USER_FIELDS`).
+- `types.ts`: общие модели API, описанные вручную.
+- `queries.ts` / `mutations.ts`: `gql`-документы и общие фрагменты (например, `USER_FIELDS`). Типы операций генерирует `npm run codegen`; их использует `adminUsers.ts`.
 - `errors.ts` — `getErrorMessage(error)`.
 - Доменные операции вынесены в отдельные модули: `tasks.ts`, `catalog.ts`, `users`-админка (`adminUsers.ts`), `collection.ts` (сбор задач).
 
