@@ -3,8 +3,7 @@ import { Ellipsis, Search, ShieldCheck, UserRound } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ADMIN_USERS_QUERY, SET_USER_ADMIN } from "../../api/adminUsers";
-import type { User } from "../../api/types";
+import { ADMIN_USERS_QUERY, SET_USER_ADMIN, type AdminUser } from "../../api/adminUsers";
 import { ErrorMessage } from "../../components/common/ErrorMessage";
 import { Spinner } from "../../components/common/Spinner";
 import { useAuth } from "../../context/AuthContext";
@@ -19,7 +18,7 @@ export function AdminUsersPage() {
   const [submitted, setSubmitted] = useState(Boolean(initialSearch));
   const [adminsMode, setAdminsMode] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const { data, loading, error, refetch } = useQuery<{ users: User[] }>(ADMIN_USERS_QUERY, { variables: { search }, skip: !submitted || adminsMode });
+  const { data, loading, error, refetch } = useQuery(ADMIN_USERS_QUERY, { variables: { search }, skip: !submitted || adminsMode });
   const [setAdmin, setAdminState] = useMutation(SET_USER_ADMIN);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -32,7 +31,7 @@ export function AdminUsersPage() {
   };
 
   // changeAdmin подтверждает чувствительное изменение роли перед отправкой.
-  const changeAdmin = async (user: User) => {
+  const changeAdmin = async (user: AdminUser) => {
     const action = user.isAdmin ? "снять права администратора" : "назначить администратором";
     if (!window.confirm(`Подтвердите действие: ${action} для @${user.username}?`)) return;
     await setAdmin({ variables: { id: user.id, admin: !user.isAdmin } });

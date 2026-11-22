@@ -8,6 +8,7 @@ const manifest = JSON.parse(readFileSync(new URL('../schema/manifest.json', impo
 const schema = readFileSync(new URL('../schema/schema.graphqls', import.meta.url));
 if (pin.repository !== 'overmindv/api-gateway' || manifest.repository !== pin.repository
     || !/^[a-f0-9]{40}$/.test(pin.commit) || manifest.commit !== pin.commit
+    || !Number.isSafeInteger(pin.source_run_id) || pin.source_run_id < 1
     || manifest.format_version !== 1
     || createHash('sha256').update(schema).digest('hex') !== manifest.schema_sha256) {
   throw new Error('GraphQL schema provenance or checksum mismatch');

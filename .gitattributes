@@ -1,1 +1,2 @@
 /schema/schema.graphqls text eol=lf
+/src/api/generated.ts text eol=lf
