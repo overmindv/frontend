@@ -43,3 +43,18 @@ test("скрывает подсказки предыдущего запроса 
   await new Promise((resolve) => window.setTimeout(resolve, 350));
   expect(screen.queryByText("НИУ ВШЭ")).not.toBeInTheDocument();
 });
+
+test("отличает ошибку поиска от успешного пустого результата", async () => {
+  render(
+    <MockedProvider mocks={[{
+      request: { query: SEARCH_QUERY, variables: { query: "вшэ", limit: 5 } },
+      error: new Error("upstream unavailable"),
+    }]}>
+      <MemoryRouter><Header /></MemoryRouter>
+    </MockedProvider>,
+  );
+  fireEvent.change(screen.getByRole("textbox", { name: "Глобальный поиск" }), { target: { value: "вшэ" } });
+
+  expect(await screen.findByText("Не удалось выполнить поиск. Попробуйте ещё раз.", {}, { timeout: 1500 })).toBeInTheDocument();
+  expect(screen.queryByText(/Нет совпадений/)).not.toBeInTheDocument();
+});

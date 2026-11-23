@@ -51,9 +51,10 @@ export function Header() {
     return () => window.clearTimeout(handle);
   }, [query]);
 
-  const { data, loading } = useQuery(SEARCH_QUERY, {
+  const { data, loading, error } = useQuery(SEARCH_QUERY, {
     variables: { query: debouncedQuery, limit: 5 },
     skip: !debouncedQuery,
+    fetchPolicy: "no-cache",
   });
   const normalizedQuery = query.trim();
   const currentResultsReady = normalizedQuery === debouncedQuery && !loading;
@@ -136,6 +137,8 @@ export function Header() {
           <div className="global-search__suggestions" aria-label="Варианты поиска">
             {!currentResultsReady
               ? <p className="global-search__state">Ищем…</p>
+              : error
+                ? <p className="global-search__state">Не удалось выполнить поиск. Попробуйте ещё раз.</p>
               : groups.length === 0
                 ? <p className="global-search__state">Нет совпадений по запросу «{query.trim()}»</p>
                 : groups.map(({ kind, items }) => (

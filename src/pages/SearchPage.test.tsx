@@ -1,11 +1,12 @@
-import { MockedProvider } from "@apollo/client/testing";
+import { ApolloClient, ApolloProvider, InMemoryCache } from "@apollo/client";
+import { MockLink, MockedProvider } from "@apollo/client/testing";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { SEARCH_QUERY } from "../api/search";
 import { SearchPage } from "./SearchPage";
 
 const results = {
-  universities: [{ __typename: "University", id: "uni-1", name: "НИУ ВШЭ", shortName: "ВШЭ", city: "Москва", country: "Россия", websiteUrl: "", status: "active", createdAt: "", updatedAt: "" }],
+  universities: [{ __typename: "University", id: "uni-1", name: "НИУ ВШЭ", shortName: "ВШЭ", city: "Москва", country: "Россия", websiteUrl: "", logoFileId: null, status: "active", createdAt: "", updatedAt: "" }],
   programs: [],
   courses: [],
   topics: [{ __typename: "Topic", id: "topic-1", courseId: null, parentTopicId: null, title: "Динамика", slug: "", description: "Движение тел", orderIndex: 0, difficulty: "intro", status: "active", createdAt: "", updatedAt: "" }],
@@ -38,5 +39,27 @@ describe("SearchPage", () => {
     renderPage("");
     expect(screen.getByText("Поиск по всей платформе")).toBeInTheDocument();
     expect(screen.getByText(/материал/)).toBeInTheDocument();
+  });
+
+  it("повторно запрашивает тот же текст после смены сессии", async () => {
+    const query = "алгебра";
+    const request = { query: SEARCH_QUERY, variables: { query, limit: 20 } };
+    const client = new ApolloClient({
+      cache: new InMemoryCache(),
+      link: new MockLink([
+        { request, result: { data: { search: { ...results, materials: [] } } } },
+        { request, result: { data: { search: results } } },
+      ]),
+    });
+    const first = render(
+      <ApolloProvider client={client}><MemoryRouter initialEntries={[`/search?q=${query}`]}><SearchPage /></MemoryRouter></ApolloProvider>,
+    );
+    expect(await screen.findByText("НИУ ВШЭ")).toBeInTheDocument();
+    expect(screen.queryByText("Линейная алгебра")).not.toBeInTheDocument();
+    first.unmount();
+
+    render(<ApolloProvider client={client}><MemoryRouter initialEntries={[`/search?q=${query}`]}><SearchPage /></MemoryRouter></ApolloProvider>);
+
+    expect(await screen.findByText("Линейная алгебра")).toBeInTheDocument();
   });
 });

@@ -12,6 +12,7 @@ export function SearchPage() {
   const { data, loading, error } = useQuery(SEARCH_QUERY, {
     variables: { query, limit: 20 },
     skip: !query.trim(),
+    fetchPolicy: "no-cache",
   });
   const results = data?.search;
 
