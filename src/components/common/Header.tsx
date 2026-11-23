@@ -55,8 +55,11 @@ export function Header() {
     variables: { query: debouncedQuery, limit: 5 },
     skip: !debouncedQuery,
   });
+  const normalizedQuery = query.trim();
+  const currentResultsReady = normalizedQuery === debouncedQuery && !loading;
 
   const groups = useMemo(() => {
+    if (!currentResultsReady) return [] as SearchGroup[];
     const results = data?.search;
     if (!results || totalResults(results) === 0) return [] as SearchGroup[];
     const out: SearchGroup[] = [];
@@ -65,7 +68,7 @@ export function Header() {
       if (items.length) out.push({ kind, items });
     }
     return out;
-  }, [data]);
+  }, [currentResultsReady, data]);
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -128,10 +131,10 @@ export function Header() {
 
       <form className="global-search" onSubmit={submitSearch} role="search">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        <input aria-label="Глобальный поиск" onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по каталогу и задачам" value={query} />
+        <input aria-label="Глобальный поиск" onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по каталогу, задачам и материалам" value={query} />
         {query.trim() && (
           <div className="global-search__suggestions" aria-label="Варианты поиска">
-            {loading
+            {!currentResultsReady
               ? <p className="global-search__state">Ищем…</p>
               : groups.length === 0
                 ? <p className="global-search__state">Нет совпадений по запросу «{query.trim()}»</p>

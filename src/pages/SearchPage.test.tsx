@@ -10,6 +10,7 @@ const results = {
   courses: [],
   topics: [{ __typename: "Topic", id: "topic-1", courseId: null, parentTopicId: null, title: "Динамика", slug: "", description: "Движение тел", orderIndex: 0, difficulty: "intro", status: "active", createdAt: "", updatedAt: "" }],
   tasks: [],
+  materials: [{ __typename: "MaterialCatalogEntry", id: "material-1", type: "note", title: "Линейная алгебра", slug: "linear-algebra", status: "published", authorId: null, revisionId: null, createdAt: "", learning: null }],
 };
 
 function renderPage(query: string) {
@@ -29,10 +30,13 @@ describe("SearchPage", () => {
     expect(screen.getByText("НИУ ВШЭ")).toBeInTheDocument();
     expect(screen.getByText("Темы")).toBeInTheDocument();
     expect(screen.getByText("Динамика")).toBeInTheDocument();
+    expect(screen.getByText("Материалы")).toBeInTheDocument();
+    expect(screen.getByText("Линейная алгебра")).toBeInTheDocument();
   });
 
   it("без запроса предлагает ввести его", () => {
     renderPage("");
     expect(screen.getByText("Поиск по всей платформе")).toBeInTheDocument();
+    expect(screen.getByText(/материал/)).toBeInTheDocument();
   });
 });

@@ -12,6 +12,7 @@ export const SEARCH_QUERY: TypedDocumentNode<Schema.SearchQuery, Schema.SearchQu
       courses { ...CourseFields }
       topics { ...TopicFields }
       tasks { ...ITTaskSummaryFields }
+      materials { id type title slug }
     }
   }
   ${UNIVERSITY_FIELDS}
@@ -32,13 +33,14 @@ export const SEARCH_KINDS = [
   { key: "courses", label: "Курсы", singular: "курс" },
   { key: "topics", label: "Темы", singular: "тема" },
   { key: "tasks", label: "Задачи", singular: "задача" },
+  { key: "materials", label: "Материалы", singular: "материал" },
 ] as const;
 
 export function totalResults(results: SearchResults): number {
-  return results.universities.length + results.programs.length + results.courses.length + results.topics.length + results.tasks.length;
+  return results.universities.length + results.programs.length + results.courses.length + results.topics.length + results.tasks.length + results.materials.length;
 }
 
-export type Searchable = University | Program | Course | Topic | ITTaskSummary;
+export type Searchable = University | Program | Course | Topic | ITTaskSummary | Schema.SearchQuery["search"]["materials"][number];
 
 // Целевой маршрут детальной страницы для вида.
 export function kindHref(kind: SearchKindKey): string {
@@ -55,6 +57,7 @@ export function kindDescription(item: Searchable): string {
   if ("city" in item) return [item.city, item.country].filter(Boolean).join(" · ");
   if ("faculty" in item) return item.faculty || "Программа";
   if ("slug" in item && "difficulty" in item) return item.description || "Тема";
+  if ("type" in item) return ({ article: "Статья", note: "Конспект", summary: "Саммари", theory: "Теория" } as const)[item.type];
   if ("slug" in item) return item.description || "Курс";
   return "Задача";
 }
